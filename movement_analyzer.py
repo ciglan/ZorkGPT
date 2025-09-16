@@ -5,13 +5,11 @@ This module provides consistent movement detection and pending connection logic
 that can be used by both real-time gameplay (main.py) and historical log analysis.
 """
 
-from typing import Dict, List, Optional, Tuple, Set
 from dataclasses import dataclass
-from map_graph import MapGraph, normalize_direction, is_non_movement_command
-
 
 # Import generic location fallbacks to avoid duplication
 from hybrid_zork_extractor import GENERIC_LOCATION_FALLBACKS
+from map_graph import is_non_movement_command
 
 
 @dataclass
@@ -19,7 +17,7 @@ class MovementContext:
     """Represents the context needed for movement analysis"""
 
     current_location: str
-    previous_location: Optional[str]
+    previous_location: str | None
     action: str
     game_response: str
     turn_number: int
@@ -30,20 +28,20 @@ class MovementResult:
     """Result of movement analysis"""
 
     movement_occurred: bool
-    from_location: Optional[str]
-    to_location: Optional[str]
+    from_location: str | None
+    to_location: str | None
     action: str
     is_pending: bool
-    environmental_factors: List[str]
+    environmental_factors: list[str]
     requires_resolution: bool
     connection_created: bool = False  # Whether a map connection should be created
     # Additional context for unique location identification
     from_description: str = ""
-    from_objects: List[str] = None
-    from_exits: List[str] = None
+    from_objects: list[str] = None
+    from_exits: list[str] = None
     to_description: str = ""
-    to_objects: List[str] = None
-    to_exits: List[str] = None
+    to_objects: list[str] = None
+    to_exits: list[str] = None
 
 
 class PendingConnection:
@@ -53,13 +51,13 @@ class PendingConnection:
         self.from_room = from_room
         self.action = action
         self.turn_created = turn_created
-        self.intermediate_actions: List[str] = []
+        self.intermediate_actions: list[str] = []
 
     def add_intermediate_action(self, action: str) -> None:
         """Add an action that occurred while this connection was pending"""
         self.intermediate_actions.append(action)
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert to dictionary for logging"""
         return {
             "from_room": self.from_room,
@@ -81,7 +79,7 @@ class MovementAnalyzer:
     """
 
     def __init__(self):
-        self.pending_connections: List[PendingConnection] = []
+        self.pending_connections: list[PendingConnection] = []
         self.max_pending_turns = 3
 
     def analyze_movement(self, context: MovementContext) -> MovementResult:
@@ -105,7 +103,7 @@ class MovementAnalyzer:
 
     def _check_pending_resolution(
         self, context: MovementContext
-    ) -> Optional[MovementResult]:
+    ) -> MovementResult | None:
         """Check if current context resolves a pending connection"""
         for i, pending in enumerate(
             self.pending_connections[:]
@@ -309,7 +307,7 @@ class MovementAnalyzer:
 
         return any(indicator in response_lower for indicator in blocking_indicators)
 
-    def _detect_environmental_factors(self, response: str) -> List[str]:
+    def _detect_environmental_factors(self, response: str) -> list[str]:
         """Detect environmental factors that affect movement from game response"""
         factors = []
         if not response:
@@ -370,7 +368,7 @@ class MovementAnalyzer:
             if turn_number - pending.turn_created <= self.max_pending_turns:
                 pending.add_intermediate_action(action)
 
-    def cleanup_expired_pending(self, current_turn: int) -> List[PendingConnection]:
+    def cleanup_expired_pending(self, current_turn: int) -> list[PendingConnection]:
         """Remove expired pending connections and return them for logging"""
         expired = []
         remaining = []
@@ -384,7 +382,7 @@ class MovementAnalyzer:
         self.pending_connections = remaining
         return expired
 
-    def get_pending_connections(self) -> List[Dict]:
+    def get_pending_connections(self) -> list[dict]:
         """Get current pending connections for logging/debugging"""
         return [pending.to_dict() for pending in self.pending_connections]
 
@@ -400,7 +398,7 @@ class MovementAnalyzer:
 # Utility functions for external use
 def create_movement_context(
     current_location: str,
-    previous_location: Optional[str],
+    previous_location: str | None,
     action: str,
     game_response: str,
     turn_number: int,

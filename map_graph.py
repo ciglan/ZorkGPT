@@ -1,5 +1,3 @@
-from typing import List, Dict, Set, Tuple
-
 DIRECTION_MAPPING = {
     "n": "north",
     "north": "north",
@@ -201,8 +199,10 @@ def normalize_direction(action_str: str) -> str | None:
 class Room:
     def __init__(self, name: str, base_name: str = None):
         self.name: str = name
-        self.base_name: str = base_name or name  # Store the conceptual name without suffixes
-        self.exits: Set[str] = set()  # Known exits from this room
+        self.base_name: str = (
+            base_name or name
+        )  # Store the conceptual name without suffixes
+        self.exits: set[str] = set()  # Known exits from this room
 
     def add_exit(self, exit_name: str):
         self.exits.add(exit_name)
@@ -213,21 +213,21 @@ class Room:
 
 class MapGraph:
     def __init__(self):
-        self.rooms: Dict[str, Room] = {}
+        self.rooms: dict[str, Room] = {}
         # connections[room_name_1][exit_taken_from_room_1] = room_name_2
-        self.connections: Dict[str, Dict[str, str]] = {}
+        self.connections: dict[str, dict[str, str]] = {}
         # Track confidence for each connection: (from_room, exit) -> confidence_score
-        self.connection_confidence: Dict[Tuple[str, str], float] = {}
+        self.connection_confidence: dict[tuple[str, str], float] = {}
         # Track how many times each connection has been verified
-        self.connection_verifications: Dict[Tuple[str, str], int] = {}
+        self.connection_verifications: dict[tuple[str, str], int] = {}
         # Track conflicts for analysis
-        self.connection_conflicts: List[Dict] = []
+        self.connection_conflicts: list[dict] = []
         # Track whether new rooms have been added since last consolidation
         self.has_new_rooms_since_consolidation: bool = False
         # Track failed exit attempts: (room_name, exit) -> failure_count
-        self.exit_failure_counts: Dict[Tuple[str, str], int] = {}
+        self.exit_failure_counts: dict[tuple[str, str], int] = {}
         # Track exits that have been permanently pruned to avoid re-adding them
-        self.pruned_exits: Dict[str, Set[str]] = {}
+        self.pruned_exits: dict[str, set[str]] = {}
 
     def _get_opposite_direction(self, direction: str) -> str:
         opposites = {
@@ -261,40 +261,42 @@ class MapGraph:
     def _extract_base_name(self, node_id: str) -> str:
         """
         Extract the base name from a (potentially suffixed) node_id string.
-        
+
         Args:
             node_id: Node ID that may have suffixes like "(3-way: east-up-west)"
-            
+
         Returns:
             The base name without any suffixes (e.g., "Kitchen Of White House")
         """
         if not node_id:
             return ""
-        
+
         # Remove parenthetical suffixes
-        base_name = node_id.split('(')[0].strip()
-        
+        base_name = node_id.split("(")[0].strip()
+
         # Apply normalization for consistency
         return self._normalize_room_name(base_name)
 
-    def get_or_create_node_id(self, base_location_name: str, current_exits: List[str], description: str = "") -> str:
+    def get_or_create_node_id(
+        self, base_location_name: str, current_exits: list[str], description: str = ""
+    ) -> str:
         """
         Get or create a node ID for a location, ensuring conceptual locations have stable IDs.
-        
+
         This method attempts to find a compatible existing node based on base name matching
         and exit compatibility. If no compatible node exists, creates a new one.
-        
+
         Args:
             base_location_name: The base name of the location (e.g., "Kitchen Of White House")
             current_exits: List of exits observed in the current turn
             description: Room description for generating new IDs if needed
-            
+
         Returns:
             Node ID (either existing compatible one or newly created)
         """
         # Normalize the base location name
         normalized_base_name = self._normalize_room_name(base_location_name)
-        
+
         # Normalize current exits into a canonical, sorted set
         normalized_current_exits = set()
         for exit_name in current_exits:
@@ -309,37 +311,49 @@ class MapGraph:
                 if clean_exit:
                     # Ensure non-directional exits are also lowercase for consistency
                     normalized_current_exits.add(clean_exit.lower())
-        
+
         # Attempt to find a compatible existing node
         for existing_node_id, room_obj in self.rooms.items():
             # Get the base name for this existing room
-            existing_base_name = room_obj.base_name if hasattr(room_obj, 'base_name') and room_obj.base_name else self._extract_base_name(existing_node_id)
-            
+            existing_base_name = (
+                room_obj.base_name
+                if hasattr(room_obj, "base_name") and room_obj.base_name
+                else self._extract_base_name(existing_node_id)
+            )
+
             # Check if base names match
             if normalized_base_name == existing_base_name:
                 # Perform compatibility check with exits
                 existing_exits = room_obj.exits
-                
+
                 # Check if the exits are compatible (either subset relationship or intersection)
                 # This allows for progressive discovery of exits in the same room
-                if (normalized_current_exits == existing_exits or 
-                    existing_exits.issubset(normalized_current_exits) or
-                    normalized_current_exits.issubset(existing_exits) or
-                    (normalized_current_exits and existing_exits and 
-                     len(normalized_current_exits.intersection(existing_exits)) > 0)):
-                    
+                if (
+                    normalized_current_exits == existing_exits
+                    or existing_exits.issubset(normalized_current_exits)
+                    or normalized_current_exits.issubset(existing_exits)
+                    or (
+                        normalized_current_exits
+                        and existing_exits
+                        and len(normalized_current_exits.intersection(existing_exits))
+                        > 0
+                    )
+                ):
+
                     # Update the room's exits to include all observed exits (union)
                     union_exits = existing_exits.union(normalized_current_exits)
                     room_obj.exits = union_exits
-                    
+
                     return existing_node_id
-        
+
         # No compatible existing node found, generate a new node ID
-        new_node_id = self._create_unique_location_id(base_location_name, description, exits=list(normalized_current_exits))
-        
+        new_node_id = self._create_unique_location_id(
+            base_location_name, description, exits=list(normalized_current_exits)
+        )
+
         # Create the new room with base_name stored
         self.add_room(new_node_id, base_name=normalized_base_name)
-        
+
         return new_node_id
 
     def add_room(self, room_name: str, base_name: str = None) -> Room:
@@ -351,7 +365,7 @@ class MapGraph:
             self.has_new_rooms_since_consolidation = True
         return self.rooms[room_key]
 
-    def update_room_exits(self, room_name: str, new_exits: List[str]):
+    def update_room_exits(self, room_name: str, new_exits: list[str]):
         # Use the room name as-is to match add_room behavior (no normalization)
         room_key = room_name
         if room_key not in self.rooms:
@@ -377,36 +391,44 @@ class MapGraph:
 
         # Filter out exits that have been permanently pruned
         pruned_exits_for_room = self.pruned_exits.get(room_key, set())
-        
+
         for exit_name in normalized_new_exits:
             # Don't re-add exits that have been pruned as invalid
             if exit_name not in pruned_exits_for_room:
                 self.rooms[room_key].add_exit(exit_name)
             else:
-                print(f"🚫 Skipping re-addition of pruned exit: {room_name} -> {exit_name}")
+                print(
+                    f"🚫 Skipping re-addition of pruned exit: {room_name} -> {exit_name}"
+                )
 
     def track_exit_failure(self, room_name: str, exit_name: str) -> int:
         """
         Track a failed exit attempt and return the current failure count.
-        
+
         Args:
             room_name: The room where the exit was attempted
             exit_name: The exit that failed (will be normalized)
-            
+
         Returns:
             The current failure count for this exit
         """
         # Use same normalization as other methods
         room_key = room_name
         normalized_action = normalize_direction(exit_name)
-        processed_exit = normalized_action if normalized_action else exit_name.lower().strip()
-        
+        processed_exit = (
+            normalized_action if normalized_action else exit_name.lower().strip()
+        )
+
         failure_key = (room_key, processed_exit)
-        self.exit_failure_counts[failure_key] = self.exit_failure_counts.get(failure_key, 0) + 1
-        
+        self.exit_failure_counts[failure_key] = (
+            self.exit_failure_counts.get(failure_key, 0) + 1
+        )
+
         failure_count = self.exit_failure_counts[failure_key]
-        print(f"🚫 Exit failure tracked: {room_name} -> {processed_exit} (attempt #{failure_count})")
-        
+        print(
+            f"🚫 Exit failure tracked: {room_name} -> {processed_exit} (attempt #{failure_count})"
+        )
+
         return failure_count
 
     def add_connection(
@@ -425,8 +447,10 @@ class MapGraph:
         # Use basic normalization for standard directions only
         # Let LLM layers handle semantic equivalence
         normalized_action = normalize_direction(exit_taken)
-        processed_exit_taken = normalized_action if normalized_action else exit_taken.lower().strip()
-        
+        processed_exit_taken = (
+            normalized_action if normalized_action else exit_taken.lower().strip()
+        )
+
         # Track confidence for this connection
         connection_key = (from_room_key, processed_exit_taken)
 
@@ -435,9 +459,7 @@ class MapGraph:
             from_room_key in self.connections
             and processed_exit_taken in self.connections[from_room_key]
         ):
-            existing_destination = self.connections[from_room_key][
-                processed_exit_taken
-            ]
+            existing_destination = self.connections[from_room_key][processed_exit_taken]
 
             if existing_destination == to_room_key:
                 # Same connection verified again - increase confidence
@@ -456,9 +478,13 @@ class MapGraph:
                 )
             else:
                 # Conflicting connection - this is important to track
-                existing_confidence = self.connection_confidence.get(connection_key, 0.5)
-                existing_verifications = self.connection_verifications.get(connection_key, 0)
-                
+                existing_confidence = self.connection_confidence.get(
+                    connection_key, 0.5
+                )
+                existing_verifications = self.connection_verifications.get(
+                    connection_key, 0
+                )
+
                 conflict = {
                     "from_room": from_room_key,
                     "exit": processed_exit_taken,
@@ -477,12 +503,14 @@ class MapGraph:
                 print(
                     f"   Existing: {existing_destination} (confidence: {existing_confidence:.2f}, verifications: {existing_verifications})"
                 )
-                print(f"   New: {to_room_key} (confidence: {confidence:.2f}, verifications: 1)")
+                print(
+                    f"   New: {to_room_key} (confidence: {confidence:.2f}, verifications: 1)"
+                )
 
                 # Enhanced conflict resolution logic
                 should_update = False
                 reason = ""
-                
+
                 if confidence > existing_confidence:
                     should_update = True
                     reason = "higher confidence"
@@ -494,9 +522,15 @@ class MapGraph:
                     else:
                         # Both have low verification count - this is suspicious
                         # Log this as a critical conflict that needs investigation
-                        print(f"   🚨 CRITICAL CONFLICT: Both connections have equal confidence and low verifications!")
-                        print(f"   🚨 This suggests inconsistent movement behavior or extraction errors.")
-                        print(f"   🚨 Keeping existing connection but flagging for investigation.")
+                        print(
+                            "   🚨 CRITICAL CONFLICT: Both connections have equal confidence and low verifications!"
+                        )
+                        print(
+                            "   🚨 This suggests inconsistent movement behavior or extraction errors."
+                        )
+                        print(
+                            "   🚨 Keeping existing connection but flagging for investigation."
+                        )
                         should_update = False
                         reason = "keeping existing due to critical conflict (needs investigation)"
                 else:
@@ -518,9 +552,7 @@ class MapGraph:
         # Add the forward connection
         if from_room_key not in self.connections:
             self.connections[from_room_key] = {}
-        self.connections[from_room_key][processed_exit_taken] = (
-            to_room_key
-        )
+        self.connections[from_room_key][processed_exit_taken] = to_room_key
         self.rooms[from_room_key].add_exit(
             processed_exit_taken
         )  # Ensure exit is recorded for the room
@@ -535,9 +567,7 @@ class MapGraph:
             # Only add reverse connection if it doesn't overwrite an existing one from that direction
             # This handles cases where "north" from A leads to B, but "south" from B leads to C (unlikely but possible)
             if opposite_exit not in self.connections[to_room_key]:
-                self.connections[to_room_key][opposite_exit] = (
-                    from_room_key
-                )
+                self.connections[to_room_key][opposite_exit] = from_room_key
                 # Set confidence for reverse connection (slightly lower since it's inferred)
                 self.connection_confidence[reverse_connection_key] = confidence * 0.9
                 self.connection_verifications[reverse_connection_key] = 1
@@ -602,7 +632,7 @@ class MapGraph:
         display_name = current_room_name
         if " (" in current_room_name and current_room_name.endswith(")"):
             display_name = current_room_name.split(" (")[0]
-        
+
         current_room_normalized = current_room_name  # Use full unique ID for lookup
         room_known = current_room_normalized in self.rooms
 
@@ -621,10 +651,10 @@ class MapGraph:
 
             # Check for mapped exits and provide guidance about unmapped exits
             has_mapped_exits = (
-                current_room_normalized in self.connections 
+                current_room_normalized in self.connections
                 and self.connections[current_room_normalized]
             )
-            
+
             has_detected_exits = room.exits and len(room.exits) > 0
 
             if has_mapped_exits:
@@ -633,13 +663,11 @@ class MapGraph:
                 context_parts.append(
                     f"Confirmed working exits: {', '.join(sorted(confirmed_exits))}"
                 )
-            
+
             if has_detected_exits:
                 # Show exits detected by extractor
-                context_parts.append(
-                    f"Detected exits: {', '.join(sorted(room.exits))}"
-                )
-            
+                context_parts.append(f"Detected exits: {', '.join(sorted(room.exits))}")
+
             # Critical warning about unmapped exits
             if not has_mapped_exits and not has_detected_exits:
                 context_parts.append(
@@ -818,7 +846,7 @@ class MapGraph:
 
     def get_high_confidence_connections(
         self, min_confidence: float = 0.7
-    ) -> Dict[str, Dict[str, str]]:
+    ) -> dict[str, dict[str, str]]:
         """Get only connections that meet the minimum confidence threshold."""
         high_confidence_connections = {}
 
@@ -842,11 +870,13 @@ class MapGraph:
         from_room_key = from_room
         # Use same normalization logic as add_connection
         normalized_action = normalize_direction(exit_taken)
-        processed_exit_taken = normalized_action if normalized_action else exit_taken.lower().strip()
+        processed_exit_taken = (
+            normalized_action if normalized_action else exit_taken.lower().strip()
+        )
         connection_key = (from_room_key, processed_exit_taken)
         return self.connection_confidence.get(connection_key, 0.0)
 
-    def get_map_quality_metrics(self) -> Dict[str, float]:
+    def get_map_quality_metrics(self) -> dict[str, float]:
         """Get metrics about the overall quality of the map."""
         if not self.connection_confidence:
             return {
@@ -919,7 +949,7 @@ class MapGraph:
 
         return "\n".join(report)
 
-    def get_navigation_suggestions(self, current_room: str) -> List[Dict]:
+    def get_navigation_suggestions(self, current_room: str) -> list[dict]:
         """Get navigation suggestions based on confidence scores."""
         # Use the full unique ID for lookup (no normalization)
         current_room_key = current_room
@@ -959,28 +989,34 @@ class MapGraph:
         else:
             return "UNCERTAIN"
 
-    def _create_unique_location_id(self, location_name: str, description: str = "", objects: List[str] = None, exits: List[str] = None) -> str:
+    def _create_unique_location_id(
+        self,
+        location_name: str,
+        description: str = "",
+        objects: list[str] = None,
+        exits: list[str] = None,
+    ) -> str:
         """
-        Create a stable unique identifier for a location that handles cases where multiple 
+        Create a stable unique identifier for a location that handles cases where multiple
         locations have the same name but different characteristics.
-        
+
         This version prioritizes exit patterns over descriptions since exits are more stable
         and less volatile than room descriptions which can change based on objects, lighting, etc.
-        
+
         Args:
             location_name: The base location name (e.g., "Clearing")
             description: Full location description text (used sparingly)
             objects: List of visible objects in the location (mostly ignored)
             exits: List of available exits from the location (primary differentiator)
-            
+
         Returns:
             Stable location identifier based primarily on exit patterns
         """
         if not location_name:
             return ""
-            
+
         base_name = self._normalize_room_name(location_name)
-        
+
         # PRIMARY APPROACH: Use exit patterns as the main differentiator
         # Exits are much more stable than descriptions or objects
         if exits:
@@ -996,17 +1032,17 @@ class MapGraph:
                 else:
                     # Keep non-directional exits (like "window", "trapdoor") as lowercase
                     normalized_exits.add(exit.lower().strip())
-            
+
             if normalized_exits:
                 # Create distinctive patterns based on exit combinations
                 exit_count = len(normalized_exits)
                 # Sort exits in a consistent manner for deterministic IDs
                 sorted_exits = sorted(list(normalized_exits))
-                
+
                 # Single exit rooms (dead ends) - highly distinctive
                 if exit_count == 1:
                     return f"{base_name} ({sorted_exits[0]} only)"
-                
+
                 # Two-exit rooms (corridors) - very distinctive
                 elif exit_count == 2:
                     exit_pair = tuple(sorted_exits)
@@ -1019,7 +1055,7 @@ class MapGraph:
                     else:
                         # Other two-exit combinations
                         return f"{base_name} ({'-'.join(sorted_exits)})"
-                
+
                 # Three-exit rooms - moderately distinctive
                 elif exit_count == 3:
                     # Check for common three-way patterns
@@ -1035,26 +1071,28 @@ class MapGraph:
                     else:
                         # Other three-exit combinations - ensure consistent lowercase
                         return f"{base_name} (3-way: {'-'.join(sorted_exits[:3])})"
-                
+
                 # Four or more exits - use count-based identifier
                 elif exit_count >= 4:
-                    if exit_count == 4 and {"north", "south", "east", "west"}.issubset(normalized_exits):
+                    if exit_count == 4 and {"north", "south", "east", "west"}.issubset(
+                        normalized_exits
+                    ):
                         return f"{base_name} (4-way intersection)"
                     else:
                         return f"{base_name} ({exit_count}-way junction)"
-        
+
         # SECONDARY APPROACH: Only use descriptions for truly permanent, structural features
         # Avoid volatile content like objects, lighting, or temporary states
         # REMOVED: All hardcoded location-specific strings to maintain LLM-First Design
         # The LLM extractor should handle location identification, not hardcoded rules
-        
+
         # AVOID: Volatile features that change frequently
         # - Objects that can be picked up/dropped
         # - Lighting conditions ("dimly lit", "dark")
         # - Temporary states ("open door", "closed window")
         # - Minor object detection variations
         # - Hardcoded location names that won't help with unseen areas
-        
+
         # Default: return the base name without modification
         # This ensures the same room gets the same ID unless there are
         # truly distinctive permanent features discovered through exit patterns
@@ -1065,159 +1103,172 @@ class MapGraph:
         # Original condition: new rooms added
         if self.has_new_rooms_since_consolidation:
             return True
-        
+
         # Enhanced condition: detect base name fragmentation
         from collections import defaultdict
+
         base_name_groups = defaultdict(list)
-        
+
         for location_name in self.rooms.keys():
             base_name = self._extract_base_name(location_name).lower()
             base_name_groups[base_name].append(location_name)
-        
+
         # Check if any base name has multiple variants
         for base_name, variants in base_name_groups.items():
             if len(variants) > 1:
                 return True  # Fragmentation detected
-        
+
         # Check for case variations
         normalized_groups = defaultdict(list)
         for location_name in self.rooms.keys():
             normalized_groups[location_name.lower()].append(location_name)
-        
+
         for normalized_name, variants in normalized_groups.items():
             if len(variants) > 1:
                 return True  # Case variations detected
-        
+
         return False
 
     def consolidate_similar_locations(self) -> int:
         """
         Automatically detect and consolidate locations that are likely the same place
         but have different unique IDs due to extractor inconsistencies.
-        
+
         This includes:
         1. Same base name with different suffixes
         2. Same base name and suffix pattern but different case
-        
+
         Returns:
             Number of consolidations performed
         """
         from collections import defaultdict
-        
+
         # Reset the flag since we're about to consolidate
         self.has_new_rooms_since_consolidation = False
-        
+
         # Group locations by their normalized full name to catch case variations
         normalized_groups = defaultdict(list)
-        
+
         for location_name in self.rooms.keys():
             # Normalize the entire location name (including suffixes) to lowercase
             normalized_full_name = location_name.lower()
             normalized_groups[normalized_full_name].append(location_name)
-        
+
         consolidations_performed = 0
-        
+
         # Find groups with multiple variants (case variations)
         for normalized_name, variants in normalized_groups.items():
             if len(variants) <= 1:
                 continue  # No case variations for this location
-                
+
             print(f"🔄 Consolidating case variations: {normalized_name}")
             print(f"   Variants found: {variants}")
-            
+
             # Choose the consolidation target - prefer the one that matches our normalization style
             # Prefer Title Case for base names and consistent patterns for suffixes
             target_location = self._choose_best_variant(variants)
-            
+
             # Collect all exits from variants
             all_exits = set()
             for variant in variants:
                 if variant in self.rooms:
                     all_exits.update(self.rooms[variant].exits)
-            
+
             print(f"   Target location: {target_location}")
             print(f"   Combined exits: {sorted(list(all_exits))}")
-            
+
             # Merge all connections from variants into the target
             for variant in variants:
                 if variant == target_location:
                     continue  # Skip the target itself
-                    
+
                 if variant in self.connections:
                     # Move outgoing connections from variant to target
                     for exit_action, destination in self.connections[variant].items():
-                        print(f"   Moving connection: {variant} --[{exit_action}]--> {destination}")
+                        print(
+                            f"   Moving connection: {variant} --[{exit_action}]--> {destination}"
+                        )
                         self.add_connection(target_location, exit_action, destination)
-                    
+
                     # Remove the old connections
                     del self.connections[variant]
-                
+
                 # Update incoming connections that point to this variant
                 for from_location, exits in self.connections.items():
                     for exit_action, destination in list(exits.items()):
                         if destination == variant:
-                            print(f"   Redirecting connection: {from_location} --[{exit_action}]--> {variant} => {target_location}")
+                            print(
+                                f"   Redirecting connection: {from_location} --[{exit_action}]--> {variant} => {target_location}"
+                            )
                             exits[exit_action] = target_location
-                
+
                 # Remove the variant room if it's not the target
                 if variant in self.rooms:
                     del self.rooms[variant]
-                    
+
                 consolidations_performed += 1
-            
+
             # Update the target location with all collected exits
             if target_location in self.rooms:
                 self.rooms[target_location].exits = all_exits
                 # Ensure the target has the correct base_name
                 room_obj = self.rooms[target_location]
-                if not hasattr(room_obj, 'base_name') or not room_obj.base_name:
+                if not hasattr(room_obj, "base_name") or not room_obj.base_name:
                     room_obj.base_name = self._extract_base_name(target_location)
             else:
                 # Create the target location if it doesn't exist
                 base_name = self._extract_base_name(target_location)
                 self.add_room(target_location, base_name=base_name)
                 self.rooms[target_location].exits = all_exits
-        
+
         if consolidations_performed > 0:
-            print(f"✅ Consolidation complete: {consolidations_performed} locations merged")
-        
+            print(
+                f"✅ Consolidation complete: {consolidations_performed} locations merged"
+            )
+
         return consolidations_performed
 
-    def _choose_best_variant(self, variants: List[str]) -> str:
+    def _choose_best_variant(self, variants: list[str]) -> str:
         """
         Choose the best variant for consolidation target.
         Prefer consistent capitalization and clean formatting.
         """
         if len(variants) == 1:
             return variants[0]
-        
+
         # Scoring system for variant quality
         def score_variant(variant):
             score = 0
-            
+
             # Prefer variants without parentheses (base names)
-            if '(' not in variant:
+            if "(" not in variant:
                 score += 1000
-            
+
             # Prefer consistent Title Case in base name
-            base_name = variant.split('(')[0].strip()
+            base_name = variant.split("(")[0].strip()
             words = base_name.split()
             if all(word[0].isupper() and word[1:].islower() for word in words if word):
                 score += 100
-            
+
             # Prefer lowercase in suffixes (our standard)
-            if '(' in variant:
-                suffix = variant[variant.find('('):]
+            if "(" in variant:
+                suffix = variant[variant.find("(") :]
                 # Count lowercase words in suffix
-                suffix_words = suffix.replace('(', '').replace(')', '').replace('-', ' ').replace(':', ' ').split()
+                suffix_words = (
+                    suffix.replace("(", "")
+                    .replace(")", "")
+                    .replace("-", " ")
+                    .replace(":", " ")
+                    .split()
+                )
                 lowercase_count = sum(1 for word in suffix_words if word.islower())
                 score += lowercase_count * 10
-            
+
             # Prefer shorter variants (less verbose)
             score -= len(variant)
-            
+
             return score
-        
+
         # Choose the variant with the highest score
         best_variant = max(variants, key=score_variant)
         return best_variant
@@ -1225,120 +1276,126 @@ class MapGraph:
     def force_consolidation(self) -> int:
         """
         Force consolidation of similar locations regardless of the needs_consolidation flag.
-        
+
         This is useful for fixing existing fragmented maps or when manual consolidation is needed.
-        
+
         Returns:
             Number of consolidations performed
         """
         print("🔧 Forcing map consolidation (bypassing needs_consolidation flag)...")
-        
+
         # Temporarily set the flag to ensure consolidation runs
         old_flag = self.has_new_rooms_since_consolidation
         self.has_new_rooms_since_consolidation = True
-        
+
         # Run consolidation
         consolidations = self.consolidate_similar_locations()
-        
+
         # Don't restore the old flag since consolidation resets it
-        
+
         return consolidations
 
     def consolidate_base_name_variants(self) -> int:
         """
         Enhanced consolidation that groups rooms by base name and merges variants.
-        
+
         This addresses the main source of fragmentation: rooms with the same base location
         but different suffixes (e.g., "Forest Path" vs "Forest Path (3-way: north-south-tree)").
-        
+
         Returns:
             Number of consolidations performed
         """
         from collections import defaultdict
-        
+
         print("🔧 Enhanced base name consolidation...")
-        
+
         # Group locations by their base name
         base_name_groups = defaultdict(list)
-        
+
         for location_name in self.rooms.keys():
             base_name = self._extract_base_name(location_name).lower()
             base_name_groups[base_name].append(location_name)
-        
+
         consolidations_performed = 0
-        
+
         # Process each base name group with multiple variants
         for base_name, variants in base_name_groups.items():
             if len(variants) <= 1:
                 continue  # No variants to consolidate
-            
+
             print(f"🔄 Consolidating base name variants: {base_name}")
             print(f"   Variants found: {variants}")
-            
+
             # Choose the best variant as the consolidation target
             target_location = self._choose_best_base_name_variant(variants)
-            
+
             # Collect all exits from all variants
             all_exits = set()
             for variant in variants:
                 if variant in self.rooms:
                     all_exits.update(self.rooms[variant].exits)
-            
+
             print(f"   Target location: {target_location}")
             print(f"   Combined exits: {sorted(list(all_exits))}")
-            
+
             # Merge all connections from variants into the target
             for variant in variants:
                 if variant == target_location:
                     continue  # Skip the target itself
-                    
+
                 # Move outgoing connections from variant to target
                 if variant in self.connections:
                     for exit_action, destination in self.connections[variant].items():
-                        print(f"   Moving connection: {variant} --[{exit_action}]--> {destination}")
+                        print(
+                            f"   Moving connection: {variant} --[{exit_action}]--> {destination}"
+                        )
                         self.add_connection(target_location, exit_action, destination)
-                    
+
                     # Remove the old connections
                     del self.connections[variant]
-                
+
                 # Update incoming connections that point to this variant
                 for from_location, exits in self.connections.items():
                     for exit_action, destination in list(exits.items()):
                         if destination == variant:
-                            print(f"   Redirecting connection: {from_location} --[{exit_action}]--> {variant} => {target_location}")
+                            print(
+                                f"   Redirecting connection: {from_location} --[{exit_action}]--> {variant} => {target_location}"
+                            )
                             exits[exit_action] = target_location
-                
+
                 # Remove the variant room if it's not the target
                 if variant in self.rooms:
                     print(f"   Removing variant: {variant}")
                     del self.rooms[variant]
-                    
+
                 consolidations_performed += 1
-            
+
             # Update the target location with all collected exits
             if target_location in self.rooms:
                 self.rooms[target_location].exits = all_exits
                 # Ensure the target has the correct base_name
                 room_obj = self.rooms[target_location]
-                if not hasattr(room_obj, 'base_name') or not room_obj.base_name:
+                if not hasattr(room_obj, "base_name") or not room_obj.base_name:
                     room_obj.base_name = self._extract_base_name(target_location)
             else:
                 # Create the target location if it doesn't exist
                 extracted_base_name = self._extract_base_name(target_location)
                 self.add_room(target_location, base_name=extracted_base_name)
                 self.rooms[target_location].exits = all_exits
-        
+
         if consolidations_performed > 0:
-            print(f"✅ Base name consolidation complete: {consolidations_performed} locations merged")
+            print(
+                f"✅ Base name consolidation complete: {consolidations_performed} locations merged"
+            )
         else:
             print("✅ No base name variants found to consolidate")
-        
+
         return consolidations_performed
 
-    def _choose_best_base_name_variant(self, variants: List[str]) -> str:
+    def _choose_best_base_name_variant(self, variants: list[str]) -> str:
         """
         Choose the best variant for base name consolidation.
-        
+
         Prioritizes:
         1. Base names without suffixes (simplest form)
         2. Well-formed suffixes that provide navigation info
@@ -1346,44 +1403,58 @@ class MapGraph:
         """
         if len(variants) == 1:
             return variants[0]
-        
+
         def score_base_name_variant(variant):
             score = 0
-            
+
             # Strongly prefer variants without parentheses (pure base names)
-            if '(' not in variant:
+            if "(" not in variant:
                 score += 2000
-            
+
             # Prefer consistent Title Case in base name
-            base_name = variant.split('(')[0].strip()
+            base_name = variant.split("(")[0].strip()
             words = base_name.split()
             if all(word[0].isupper() and word[1:].islower() for word in words if word):
                 score += 500
-            
+
             # Evaluate suffix quality if present
-            if '(' in variant:
-                suffix = variant[variant.find('('):]
-                
+            if "(" in variant:
+                suffix = variant[variant.find("(") :]
+
                 # Prefer suffixes that describe navigation topology
-                navigation_keywords = ['junction', 'corridor', 'intersection', 'way', 'passage']
+                navigation_keywords = [
+                    "junction",
+                    "corridor",
+                    "intersection",
+                    "way",
+                    "passage",
+                ]
                 if any(keyword in suffix.lower() for keyword in navigation_keywords):
                     score += 200
-                
+
                 # Prefer suffixes with direction information
-                direction_keywords = ['north', 'south', 'east', 'west', 'up', 'down']
-                direction_count = sum(1 for keyword in direction_keywords if keyword in suffix.lower())
+                direction_keywords = ["north", "south", "east", "west", "up", "down"]
+                direction_count = sum(
+                    1 for keyword in direction_keywords if keyword in suffix.lower()
+                )
                 score += direction_count * 50
-                
+
                 # Prefer lowercase in suffixes (our standard)
-                suffix_words = suffix.replace('(', '').replace(')', '').replace('-', ' ').replace(':', ' ').split()
+                suffix_words = (
+                    suffix.replace("(", "")
+                    .replace(")", "")
+                    .replace("-", " ")
+                    .replace(":", " ")
+                    .split()
+                )
                 lowercase_count = sum(1 for word in suffix_words if word.islower())
                 score += lowercase_count * 10
-            
+
             # Prefer shorter variants (less verbose)
             score -= len(variant) * 2
-            
+
             return score
-        
+
         # Choose the variant with the highest score
         best_variant = max(variants, key=score_base_name_variant)
         print(f"   Selected '{best_variant}' from variants: {variants}")
@@ -1392,275 +1463,324 @@ class MapGraph:
     def prune_fragmented_nodes(self) -> int:
         """
         Identify and remove fragmented nodes that serve no navigation purpose.
-        
+
         Removes:
         1. Nodes with no exits and no incoming connections (isolated dead ends)
         2. Nodes that have only outgoing connections to "Unknown Destination" but no real connections
-        
+
         Preserves:
         1. Nodes that have real incoming connections (they serve as destinations)
         2. Nodes that have real outgoing connections (they provide navigation options)
         3. Unknown destination placeholders (they represent future exploration potential)
-        
+
         Returns:
             Number of nodes pruned
         """
         pruned_count = 0
-        
+
         # Find all nodes that have incoming connections (are destinations)
         nodes_with_incoming = set()
         for from_room, exits in self.connections.items():
             for exit_action, destination in exits.items():
                 if not destination.startswith("Unknown Destination"):
                     nodes_with_incoming.add(destination)
-        
+
         # Identify candidates for pruning
         candidates_for_pruning = []
-        
+
         for room_name in list(self.rooms.keys()):
             room = self.rooms[room_name]
-            
+
             # Skip if this is an "Unknown Destination" placeholder - we want to keep these
             if room_name.startswith("Unknown Destination"):
                 continue
-            
+
             # Case 1: Node has no exits at all
             if not room.exits or len(room.exits) == 0:
                 # Only prune if it also has no incoming connections
                 if room_name not in nodes_with_incoming:
-                    candidates_for_pruning.append((room_name, "no exits, no incoming connections"))
+                    candidates_for_pruning.append(
+                        (room_name, "no exits, no incoming connections")
+                    )
                     continue
-            
+
             # Case 2: Node has exits but all outgoing connections go to unknown destinations
             if room_name in self.connections:
                 outgoing_connections = self.connections[room_name]
-                real_connections = [dest for dest in outgoing_connections.values() 
-                                 if not dest.startswith("Unknown Destination")]
-                
+                real_connections = [
+                    dest
+                    for dest in outgoing_connections.values()
+                    if not dest.startswith("Unknown Destination")
+                ]
+
                 if len(real_connections) == 0 and room_name not in nodes_with_incoming:
                     # All connections go to unknown destinations and no one connects TO this room
-                    candidates_for_pruning.append((room_name, "only unknown destinations, no incoming"))
-        
+                    candidates_for_pruning.append(
+                        (room_name, "only unknown destinations, no incoming")
+                    )
+
         # Perform the pruning
         for room_name, reason in candidates_for_pruning:
             print(f"🗑️  Pruning fragmented node: {room_name} ({reason})")
-            
+
             # Remove from rooms
             if room_name in self.rooms:
                 del self.rooms[room_name]
-            
+
             # Remove from connections
             if room_name in self.connections:
                 del self.connections[room_name]
-            
+
             # Remove any remaining incoming connections (shouldn't be any based on our logic)
             for from_room, exits in self.connections.items():
-                exits_to_remove = [exit_action for exit_action, destination in exits.items() 
-                                 if destination == room_name]
+                exits_to_remove = [
+                    exit_action
+                    for exit_action, destination in exits.items()
+                    if destination == room_name
+                ]
                 for exit_action in exits_to_remove:
-                    print(f"   Removing stale connection: {from_room} --[{exit_action}]--> {room_name}")
+                    print(
+                        f"   Removing stale connection: {from_room} --[{exit_action}]--> {room_name}"
+                    )
                     del exits[exit_action]
-            
+
             pruned_count += 1
-        
+
         if pruned_count > 0:
             print(f"✅ Pruning complete: {pruned_count} fragmented nodes removed")
         else:
             print("✅ No fragmented nodes found to prune")
-        
+
         return pruned_count
 
     def get_fragmentation_report(self) -> str:
         """
         Generate a report on map fragmentation issues.
-        
+
         Returns:
             Human-readable report of fragmentation status
         """
         report_lines = ["🔍 MAP FRAGMENTATION REPORT", "=" * 40]
-        
+
         # Count nodes with no exits
-        empty_exit_nodes = [name for name, room in self.rooms.items() 
-                          if not room.exits or len(room.exits) == 0]
-        
+        empty_exit_nodes = [
+            name
+            for name, room in self.rooms.items()
+            if not room.exits or len(room.exits) == 0
+        ]
+
         # Count nodes with incoming connections
         nodes_with_incoming = set()
         for from_room, exits in self.connections.items():
             for exit_action, destination in exits.items():
                 if not destination.startswith("Unknown Destination"):
                     nodes_with_incoming.add(destination)
-        
+
         # Count isolated nodes (no exits, no incoming)
-        isolated_nodes = [name for name in empty_exit_nodes 
-                         if name not in nodes_with_incoming]
-        
+        isolated_nodes = [
+            name for name in empty_exit_nodes if name not in nodes_with_incoming
+        ]
+
         # Count unknown destination placeholders
-        unknown_destinations = sum(1 for exits in self.connections.values() 
-                                 for dest in exits.values() 
-                                 if dest.startswith("Unknown Destination"))
-        
+        unknown_destinations = sum(
+            1
+            for exits in self.connections.values()
+            for dest in exits.values()
+            if dest.startswith("Unknown Destination")
+        )
+
         # Count base name variations
         from collections import defaultdict
+
         base_name_groups = defaultdict(list)
         for room_name in self.rooms.keys():
             base_name = self._extract_base_name(room_name)
             base_name_groups[base_name].append(room_name)
-        
-        fragmented_base_names = {base: variants for base, variants in base_name_groups.items() 
-                               if len(variants) > 1}
-        
+
+        fragmented_base_names = {
+            base: variants
+            for base, variants in base_name_groups.items()
+            if len(variants) > 1
+        }
+
         # Add statistics to report
-        report_lines.extend([
-            f"Total Rooms: {len(self.rooms)}",
-            f"Total Connections: {len(self.connections)}",
-            f"Empty Exit Nodes: {len(empty_exit_nodes)}",
-            f"Isolated Nodes: {len(isolated_nodes)}",
-            f"Unknown Destinations: {unknown_destinations}",
-            f"Fragmented Base Names: {len(fragmented_base_names)}",
-            ""
-        ])
-        
+        report_lines.extend(
+            [
+                f"Total Rooms: {len(self.rooms)}",
+                f"Total Connections: {len(self.connections)}",
+                f"Empty Exit Nodes: {len(empty_exit_nodes)}",
+                f"Isolated Nodes: {len(isolated_nodes)}",
+                f"Unknown Destinations: {unknown_destinations}",
+                f"Fragmented Base Names: {len(fragmented_base_names)}",
+                "",
+            ]
+        )
+
         # Detail isolated nodes
         if isolated_nodes:
             report_lines.extend(["🗑️  ISOLATED NODES (candidates for pruning):"])
             for node in isolated_nodes:
                 report_lines.append(f"   - {node}")
             report_lines.append("")
-        
+
         # Detail fragmented base names
         if fragmented_base_names:
-            report_lines.extend(["🔄 FRAGMENTED BASE NAMES (candidates for consolidation):"])
+            report_lines.extend(
+                ["🔄 FRAGMENTED BASE NAMES (candidates for consolidation):"]
+            )
             for base_name, variants in fragmented_base_names.items():
                 if len(variants) > 1:
                     report_lines.append(f"   {base_name}:")
                     for variant in variants:
                         report_lines.append(f"     - {variant}")
             report_lines.append("")
-        
+
         # Detail empty exit nodes that are NOT isolated
-        connected_empty_nodes = [name for name in empty_exit_nodes if name in nodes_with_incoming]
+        connected_empty_nodes = [
+            name for name in empty_exit_nodes if name in nodes_with_incoming
+        ]
         if connected_empty_nodes:
             report_lines.extend(["⚠️  EMPTY EXIT NODES (have incoming connections):"])
             for node in connected_empty_nodes:
                 report_lines.append(f"   - {node}")
             report_lines.append("")
-        
+
         return "\n".join(report_lines)
 
     def prune_invalid_exits(self, room_name: str, min_failure_count: int = 3) -> int:
         """
         Remove exits that have been tried multiple times and consistently failed.
-        
+
         Args:
             room_name: The room to prune exits from
             min_failure_count: Minimum number of failures before pruning an exit
-            
+
         Returns:
             Number of exits pruned
         """
         room_key = room_name
         if room_key not in self.rooms:
             return 0
-        
+
         room = self.rooms[room_key]
         exits_to_remove = []
         pruned_count = 0
-        
+
         # Check each exit in the room against failure counts
-        for exit_name in list(room.exits):  # Use list() to avoid modification during iteration
+        for exit_name in list(
+            room.exits
+        ):  # Use list() to avoid modification during iteration
             failure_key = (room_key, exit_name)
             failure_count = self.exit_failure_counts.get(failure_key, 0)
-            
+
             if failure_count >= min_failure_count:
                 exits_to_remove.append(exit_name)
-        
+
         # Remove the failed exits
         for exit_name in exits_to_remove:
             room.exits.discard(exit_name)
-            
+
             # Track that this exit has been pruned to avoid re-adding it
             if room_key not in self.pruned_exits:
                 self.pruned_exits[room_key] = set()
             self.pruned_exits[room_key].add(exit_name)
-            
-            print(f"🗑️ Pruned invalid exit: {room_name} -> {exit_name} (failed {self.exit_failure_counts.get((room_key, exit_name), 0)} times)")
+
+            print(
+                f"🗑️ Pruned invalid exit: {room_name} -> {exit_name} (failed {self.exit_failure_counts.get((room_key, exit_name), 0)} times)"
+            )
             pruned_count += 1
-        
+
         if pruned_count > 0:
-            print(f"✅ Exit pruning complete for {room_name}: {pruned_count} invalid exits removed")
-        
+            print(
+                f"✅ Exit pruning complete for {room_name}: {pruned_count} invalid exits removed"
+            )
+
         return pruned_count
 
-    def get_exit_failure_stats(self, room_name: str = None) -> Dict:
+    def get_exit_failure_stats(self, room_name: str = None) -> dict:
         """
         Get statistics about exit failures, either for a specific room or globally.
-        
+
         Args:
             room_name: If provided, return stats only for this room. If None, return global stats.
-            
+
         Returns:
             Dictionary containing failure statistics
         """
         if room_name:
             # Stats for specific room
             room_key = room_name
-            room_failures = {k: v for k, v in self.exit_failure_counts.items() if k[0] == room_key}
+            room_failures = {
+                k: v for k, v in self.exit_failure_counts.items() if k[0] == room_key
+            }
             pruned_exits = self.pruned_exits.get(room_key, set())
-            
+
             return {
                 "room": room_name,
                 "total_failed_attempts": sum(room_failures.values()),
                 "unique_failed_exits": len(room_failures),
                 "pruned_exits": list(pruned_exits),
                 "failure_details": {f"{k[1]}": v for k, v in room_failures.items()},
-                "highest_failure_count": max(room_failures.values()) if room_failures else 0,
+                "highest_failure_count": (
+                    max(room_failures.values()) if room_failures else 0
+                ),
             }
         else:
             # Global stats
             total_failures = sum(self.exit_failure_counts.values())
             total_pruned = sum(len(exits) for exits in self.pruned_exits.values())
-            
+
             return {
                 "total_failed_attempts": total_failures,
                 "unique_failed_exits": len(self.exit_failure_counts),
                 "total_pruned_exits": total_pruned,
-                "rooms_with_failures": len(set(k[0] for k in self.exit_failure_counts.keys())),
+                "rooms_with_failures": len(
+                    set(k[0] for k in self.exit_failure_counts.keys())
+                ),
                 "rooms_with_pruned_exits": len(self.pruned_exits),
-                "highest_failure_count": max(self.exit_failure_counts.values()) if self.exit_failure_counts else 0,
+                "highest_failure_count": (
+                    max(self.exit_failure_counts.values())
+                    if self.exit_failure_counts
+                    else 0
+                ),
             }
 
     def render_exit_failure_report(self) -> str:
         """
         Generate a detailed report on exit failures and pruning.
-        
+
         Returns:
             Human-readable report of exit failure status
         """
         if not self.exit_failure_counts and not self.pruned_exits:
-            return "🔍 EXIT FAILURE REPORT\n" + "=" * 30 + "\nNo exit failures recorded."
-        
+            return (
+                "🔍 EXIT FAILURE REPORT\n" + "=" * 30 + "\nNo exit failures recorded."
+            )
+
         report_lines = ["🔍 EXIT FAILURE REPORT", "=" * 30]
-        
+
         # Overall statistics
         total_failures = sum(self.exit_failure_counts.values())
         total_pruned = sum(len(exits) for exits in self.pruned_exits.values())
-        
-        report_lines.extend([
-            f"Total Failed Attempts: {total_failures}",
-            f"Unique Failed Exits: {len(self.exit_failure_counts)}",
-            f"Total Pruned Exits: {total_pruned}",
-            f"Rooms with Failures: {len(set(k[0] for k in self.exit_failure_counts.keys()))}",
-            f"Rooms with Pruned Exits: {len(self.pruned_exits)}",
-            ""
-        ])
-        
+
+        report_lines.extend(
+            [
+                f"Total Failed Attempts: {total_failures}",
+                f"Unique Failed Exits: {len(self.exit_failure_counts)}",
+                f"Total Pruned Exits: {total_pruned}",
+                f"Rooms with Failures: {len(set(k[0] for k in self.exit_failure_counts.keys()))}",
+                f"Rooms with Pruned Exits: {len(self.pruned_exits)}",
+                "",
+            ]
+        )
+
         # Active failures (not yet pruned)
         active_failures = []
         for (room, exit), count in self.exit_failure_counts.items():
             pruned_exits_for_room = self.pruned_exits.get(room, set())
             if exit not in pruned_exits_for_room:
                 active_failures.append((room, exit, count))
-        
+
         if active_failures:
             report_lines.extend(["⚠️  ACTIVE FAILURES (not yet pruned):"])
             # Sort by failure count (highest first)
@@ -1670,7 +1790,7 @@ class MapGraph:
             if len(active_failures) > 10:
                 report_lines.append(f"  ... and {len(active_failures) - 10} more")
             report_lines.append("")
-        
+
         # Pruned exits by room
         if self.pruned_exits:
             report_lines.extend(["🗑️  PRUNED EXITS BY ROOM:"])
@@ -1678,20 +1798,24 @@ class MapGraph:
                 if exits:
                     report_lines.append(f"  {room}: {', '.join(sorted(exits))}")
             report_lines.append("")
-        
+
         # Rooms with highest failure counts
         room_failure_totals = {}
         for (room, exit), count in self.exit_failure_counts.items():
             room_failure_totals[room] = room_failure_totals.get(room, 0) + count
-        
+
         if room_failure_totals:
-            sorted_rooms = sorted(room_failure_totals.items(), key=lambda x: x[1], reverse=True)
+            sorted_rooms = sorted(
+                room_failure_totals.items(), key=lambda x: x[1], reverse=True
+            )
             report_lines.extend(["📊 ROOMS WITH MOST FAILURES:"])
             for room, total_count in sorted_rooms[:5]:  # Show top 5
                 room_pruned_count = len(self.pruned_exits.get(room, set()))
-                report_lines.append(f"  {room}: {total_count} total failures, {room_pruned_count} exits pruned")
+                report_lines.append(
+                    f"  {room}: {total_count} total failures, {room_pruned_count} exits pruned"
+                )
             report_lines.append("")
-        
+
         return "\n".join(report_lines)
 
 

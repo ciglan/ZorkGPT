@@ -7,18 +7,14 @@ using turn-based sliding windows instead of episode-based analysis.
 
 import json
 import os
-from datetime import datetime
-from typing import List, Dict, Optional, Tuple
-from map_graph import MapGraph
-from movement_analyzer import MovementAnalyzer, create_movement_context
-from llm_client import LLMClientWrapper
-from config import get_config, get_client_api_key
 import re
-from pathlib import Path
+
+from config import get_client_api_key, get_config
+from llm_client import LLMClientWrapper
+from map_graph import MapGraph
 
 # Import shared utilities
 from shared_utils import estimate_tokens
-
 
 
 class AdaptiveKnowledgeManager:
@@ -43,7 +39,7 @@ class AdaptiveKnowledgeManager:
         # Initialize LLM client
         config = get_config()
         self.client = LLMClientWrapper(
-            base_url=config.llm.get_base_url_for_model('analysis'),
+            base_url=config.llm.get_base_url_for_model("analysis"),
             api_key=get_client_api_key(),
         )
 
@@ -58,35 +54,37 @@ class AdaptiveKnowledgeManager:
         # Turn-based configuration
         self.turn_window_size = config.gameplay.turn_window_size
         self.min_quality_threshold = config.gameplay.min_knowledge_quality
-        
+
         # Knowledge base condensation configuration
         self.enable_condensation = config.gameplay.enable_knowledge_condensation
         self.condensation_threshold = config.gameplay.knowledge_condensation_threshold
-        
+
         # Prompt logging counter for temporary evaluation
         self.prompt_counter = 0
         self.enable_prompt_logging = config.logging.enable_prompt_logging
-        
+
         # Load agent instructions to avoid duplication
         self.agent_instructions = self._load_agent_instructions()
 
-    def _log_prompt_to_file(self, messages: List[Dict], prefix: str = "knowledge") -> None:
+    def _log_prompt_to_file(
+        self, messages: list[dict], prefix: str = "knowledge"
+    ) -> None:
         """Log the full prompt to a temporary file for evaluation."""
         if not self.enable_prompt_logging:
             return
-            
+
         self.prompt_counter += 1
         filename = f"tmp/{prefix}_{self.prompt_counter:03d}.txt"
-        
+
         try:
-            with open(filename, 'w', encoding='utf-8') as f:
+            with open(filename, "w", encoding="utf-8") as f:
                 f.write(f"=== {prefix.upper()} PROMPT #{self.prompt_counter} ===\n")
                 f.write(f"Model: {self.analysis_model}\n")
                 f.write("=" * 50 + "\n\n")
-                
+
                 for i, message in enumerate(messages):
                     f.write(f"--- MESSAGE {i+1} ({message['role'].upper()}) ---\n")
-                    f.write(message['content'])
+                    f.write(message["content"])
                     f.write("\n\n")
         except Exception as e:
             print(f"Failed to log prompt to {filename}: {e}")
@@ -94,7 +92,7 @@ class AdaptiveKnowledgeManager:
     def _load_agent_instructions(self) -> str:
         """Load the agent.md prompt to understand what's already covered."""
         try:
-            with open("agent.md", "r", encoding="utf-8") as f:
+            with open("agent.md", encoding="utf-8") as f:
                 return f.read()
         except Exception as e:
             print(f"  ⚠️ Could not load agent.md: {e}")
@@ -103,72 +101,96 @@ class AdaptiveKnowledgeManager:
     def _is_first_meaningful_update(self) -> bool:
         """
         Check if this is the first meaningful knowledge update.
-        
+
         Returns True if:
         1. No knowledge base exists, OR
         2. Knowledge base only contains auto-generated basic content (map + basic strategy)
-        
+
         This handles the case where knowledgebase.md is auto-created for map updates
         but doesn't contain any LLM-generated strategic insights yet.
         """
         if not os.path.exists(self.output_file):
             return True
-            
+
         if os.path.getsize(self.output_file) == 0:
             return True
-            
+
         try:
-            with open(self.output_file, "r", encoding="utf-8") as f:
+            with open(self.output_file, encoding="utf-8") as f:
                 content = f.read()
-                
+
             # Check if content only contains basic auto-generated sections
             # Look for indicators of LLM-generated strategic content
-            
+
             # Remove map section for analysis
             content_without_map = self._trim_map_section(content)
-            
+
             # Basic strategy indicators that suggest auto-generated content
             basic_indicators = [
                 "Always begin each location with 'look'",
                 "Use systematic exploration patterns",
                 "Execute 'take' commands for all portable items",
                 "Parse all text output for puzzle-solving information",
-                "Prioritize information extraction over rapid action execution"
+                "Prioritize information extraction over rapid action execution",
             ]
-            
+
             # Count how many basic indicators are present
-            basic_indicator_count = sum(1 for indicator in basic_indicators if indicator in content_without_map)
-            
+            basic_indicator_count = sum(
+                1 for indicator in basic_indicators if indicator in content_without_map
+            )
+
             # If content is very short and mostly contains basic indicators, treat as first update
-            content_lines = [line.strip() for line in content_without_map.split('\n') if line.strip()]
-            meaningful_content_lines = [line for line in content_lines if not line.startswith('#') and len(line) > 10]
-            
+            content_lines = [
+                line.strip() for line in content_without_map.split("\n") if line.strip()
+            ]
+            meaningful_content_lines = [
+                line
+                for line in content_lines
+                if not line.startswith("#") and len(line) > 10
+            ]
+
             # Heuristics for detecting auto-generated vs LLM-generated content:
             # 1. Very few meaningful content lines (< 10)
             # 2. High ratio of basic indicators to total content
             # 3. No complex strategic insights (no sentences > 100 chars with specific game references)
-            
+
             if len(meaningful_content_lines) < 10:
                 return True
-                
+
             if basic_indicator_count >= 3 and len(meaningful_content_lines) < 15:
                 return True
-                
+
             # Look for complex strategic insights (longer sentences with game-specific terms)
             complex_insights = [
-                line for line in meaningful_content_lines 
-                if len(line) > 80 and any(term in line.lower() for term in [
-                    'puzzle', 'treasure', 'combat', 'inventory', 'specific', 'strategy',
-                    'avoid', 'danger', 'death', 'troll', 'grue', 'lamp', 'sword'
-                ])
+                line
+                for line in meaningful_content_lines
+                if len(line) > 80
+                and any(
+                    term in line.lower()
+                    for term in [
+                        "puzzle",
+                        "treasure",
+                        "combat",
+                        "inventory",
+                        "specific",
+                        "strategy",
+                        "avoid",
+                        "danger",
+                        "death",
+                        "troll",
+                        "grue",
+                        "lamp",
+                        "sword",
+                    ]
+                )
             ]
-            
+
             # If no complex insights found, likely still basic content
             if len(complex_insights) == 0:
                 return True
-                
+
             return False
-            
+
         except Exception as e:
             print(f"  ⚠️ Error checking knowledge base content: {e}")
             # If we can't read it, assume it's not meaningful yet
@@ -225,7 +247,7 @@ class AdaptiveKnowledgeManager:
         # Allow first update regardless of quality to bootstrap learning
         if is_first_update:
             print(
-                f"  🌱 First knowledge update - proceeding regardless of quality score to bootstrap learning"
+                "  🌱 First knowledge update - proceeding regardless of quality score to bootstrap learning"
             )
         elif quality_score < effective_threshold:
             print(
@@ -235,7 +257,7 @@ class AdaptiveKnowledgeManager:
 
         # Method 2 Optimization: Always use comprehensive analysis since we have full episode context
         # The strategy determination system was designed for incremental windows with limited context
-        print(f"  🎯 Using comprehensive analysis (Method 2: full episode context)")
+        print("  🎯 Using comprehensive analysis (Method 2: full episode context)")
 
         # Step 2: Perform comprehensive analysis with full episode context
         new_insights = self._analyze_full_insights(turn_data)
@@ -254,7 +276,7 @@ class AdaptiveKnowledgeManager:
 
     def _extract_turn_window_data(
         self, episode_id: str, start_turn: int, end_turn: int
-    ) -> Optional[Dict]:
+    ) -> dict | None:
         """Extract action-response data for a specific turn window."""
         turn_data = {
             "episode_id": episode_id,
@@ -269,12 +291,12 @@ class AdaptiveKnowledgeManager:
         }
 
         try:
-            with open(self.log_file, "r", encoding="utf-8") as f:
+            with open(self.log_file, encoding="utf-8") as f:
                 current_turn = 0
                 current_score = 0
                 current_location = ""
                 current_inventory = []
-                
+
                 # Store death messages temporarily for proper association
                 death_messages_by_turn = {}
 
@@ -293,7 +315,9 @@ class AdaptiveKnowledgeManager:
                             current_turn = log_entry.get("turn", 0)
 
                         # Collect action-response pairs - but only within our turn window
-                        if event_type == "final_action_selection" and (start_turn <= current_turn <= end_turn):
+                        if event_type == "final_action_selection" and (
+                            start_turn <= current_turn <= end_turn
+                        ):
                             action_data = {
                                 "turn": current_turn,
                                 "action": log_entry.get("agent_action", ""),
@@ -310,21 +334,35 @@ class AdaptiveKnowledgeManager:
                         ):
                             # Update the last action with its response
                             response = log_entry.get("zork_response", "")
-                            turn_data["actions_and_responses"][-1]["response"] = response
-                            
+                            turn_data["actions_and_responses"][-1][
+                                "response"
+                            ] = response
+
                             # Check if this zork response contains death information and store it
-                            if any(death_indicator in response.lower() for death_indicator in [
-                                "you have died", "you are dead", "slavering fangs", "eaten by a grue",
-                                "you have been killed", "****  you have died  ****", "fatal"
-                            ]):
+                            if any(
+                                death_indicator in response.lower()
+                                for death_indicator in [
+                                    "you have died",
+                                    "you are dead",
+                                    "slavering fangs",
+                                    "eaten by a grue",
+                                    "you have been killed",
+                                    "****  you have died  ****",
+                                    "fatal",
+                                ]
+                            ):
                                 action = log_entry.get("action", "")
                                 # Create contextual description instead of bare action
-                                death_context = f"{action} from {current_location}" if current_location else action
+                                death_context = (
+                                    f"{action} from {current_location}"
+                                    if current_location
+                                    else action
+                                )
                                 death_messages_by_turn[current_turn] = {
                                     "detailed_death_message": response,
                                     "death_context": death_context,
                                     "death_location": current_location,
-                                    "fatal_action": action  # Keep raw action for reference
+                                    "fatal_action": action,  # Keep raw action for reference
                                 }
 
                         # Only collect data within our turn window for other events
@@ -332,23 +370,39 @@ class AdaptiveKnowledgeManager:
                             continue
 
                         # Track death and game over events
-                        if event_type in ["game_over", "game_over_final", "death_during_inventory"]:
+                        if event_type in [
+                            "game_over",
+                            "game_over_final",
+                            "death_during_inventory",
+                        ]:
                             death_event = {
                                 "turn": current_turn,
                                 "event_type": event_type,
                                 "reason": log_entry.get("reason", ""),
                                 "action_taken": log_entry.get("action_taken", ""),
-                                "final_score": log_entry.get("final_score", current_score),
+                                "final_score": log_entry.get(
+                                    "final_score", current_score
+                                ),
                                 "death_count": log_entry.get("death_count", 0),
                             }
-                            
+
                             # Add to both death_events and game_over_events for different analysis purposes
                             turn_data["game_over_events"].append(death_event)
-                            
+
                             # Check if this is specifically a death (vs victory)
                             reason = log_entry.get("reason", "").lower()
-                            death_indicators = ["died", "death", "eaten", "grue", "killed", "fall", "crushed"]
-                            if any(indicator in reason for indicator in death_indicators):
+                            death_indicators = [
+                                "died",
+                                "death",
+                                "eaten",
+                                "grue",
+                                "killed",
+                                "fall",
+                                "crushed",
+                            ]
+                            if any(
+                                indicator in reason for indicator in death_indicators
+                            ):
                                 turn_data["death_events"].append(death_event)
 
                         # Track death state extraction for context
@@ -356,9 +410,15 @@ class AdaptiveKnowledgeManager:
                             extracted_info = log_entry.get("extracted_info", {})
                             if extracted_info and turn_data["death_events"]:
                                 # Add extraction details to the most recent death event
-                                turn_data["death_events"][-1]["death_location"] = extracted_info.get("current_location_name", "")
-                                turn_data["death_events"][-1]["death_objects"] = extracted_info.get("visible_objects", [])
-                                turn_data["death_events"][-1]["death_messages"] = extracted_info.get("important_messages", [])
+                                turn_data["death_events"][-1]["death_location"] = (
+                                    extracted_info.get("current_location_name", "")
+                                )
+                                turn_data["death_events"][-1]["death_objects"] = (
+                                    extracted_info.get("visible_objects", [])
+                                )
+                                turn_data["death_events"][-1]["death_messages"] = (
+                                    extracted_info.get("important_messages", [])
+                                )
 
                         # Track score changes
                         elif event_type == "experience" and "zork_score" in log_entry:
@@ -400,15 +460,15 @@ class AdaptiveKnowledgeManager:
         except FileNotFoundError:
             print(f"  ⚠️ Log file {self.log_file} not found")
             return None
-        
+
         # Apply stored death messages to death events
         for turn_num, death_info in death_messages_by_turn.items():
             # Apply to death events
             for death_event in turn_data["death_events"]:
                 if death_event["turn"] == turn_num:
                     death_event.update(death_info)
-            
-            # Apply to game over events  
+
+            # Apply to game over events
             for game_over_event in turn_data["game_over_events"]:
                 if game_over_event["turn"] == turn_num:
                     game_over_event.update(death_info)
@@ -416,8 +476,8 @@ class AdaptiveKnowledgeManager:
         return turn_data if turn_data["actions_and_responses"] else None
 
     def _assess_knowledge_update_quality(
-        self, turn_data: Dict, is_final_update: bool = False
-    ) -> Tuple[float, str]:
+        self, turn_data: dict, is_final_update: bool = False
+    ) -> tuple[float, str]:
         """Let LLM assess if this turn window would produce useful knowledge."""
 
         # Prepare summary of turn data
@@ -431,9 +491,11 @@ class AdaptiveKnowledgeManager:
         sample_actions = turn_data["actions_and_responses"][:50]
         actions_summary = "\n".join(
             [
-                f"Turn {action['turn']}: {action['action']} -> {action['response'][:100]}..."
-                if len(action["response"]) > 100
-                else f"Turn {action['turn']}: {action['action']} -> {action['response']}"
+                (
+                    f"Turn {action['turn']}: {action['action']} -> {action['response'][:100]}..."
+                    if len(action["response"]) > 100
+                    else f"Turn {action['turn']}: {action['action']} -> {action['response']}"
+                )
                 for action in sample_actions
             ]
         )
@@ -441,15 +503,19 @@ class AdaptiveKnowledgeManager:
         # Add death event summary if any occurred
         death_summary = ""
         if num_death_events > 0:
-            death_summary = "\n\nDEATH EVENTS:\n" + "\n".join([
-                f"Turn {event['turn']}: {event['reason']} ({'Context: ' + event.get('death_context', 'N/A') if event.get('death_context') else 'Action: ' + event.get('action_taken', 'N/A')})"
-                for event in turn_data["death_events"]
-            ])
+            death_summary = "\n\nDEATH EVENTS:\n" + "\n".join(
+                [
+                    f"Turn {event['turn']}: {event['reason']} ({'Context: ' + event.get('death_context', 'N/A') if event.get('death_context') else 'Action: ' + event.get('action_taken', 'N/A')})"
+                    for event in turn_data["death_events"]
+                ]
+            )
         elif num_game_over_events > 0:
-            death_summary = "\n\nGAME OVER EVENTS:\n" + "\n".join([
-                f"Turn {event['turn']}: {event['reason']} ({'Context: ' + event.get('death_context', 'N/A') if event.get('death_context') else 'Action: ' + event.get('action_taken', 'N/A')})"
-                for event in turn_data["game_over_events"]
-            ])
+            death_summary = "\n\nGAME OVER EVENTS:\n" + "\n".join(
+                [
+                    f"Turn {event['turn']}: {event['reason']} ({'Context: ' + event.get('death_context', 'N/A') if event.get('death_context') else 'Action: ' + event.get('action_taken', 'N/A')})"
+                    for event in turn_data["game_over_events"]
+                ]
+            )
 
         # Adjust prompt based on whether this is a final update
         context_note = ""
@@ -501,10 +567,10 @@ REASON: [brief explanation]"""
                 },
                 {"role": "user", "content": prompt},
             ]
-            
+
             # Log the full prompt for evaluation
             self._log_prompt_to_file(messages, "knowledge_quality")
-            
+
             response = self.client.chat.completions.create(
                 model=self.analysis_model,
                 messages=messages,
@@ -537,7 +603,7 @@ REASON: [brief explanation]"""
             print(f"  ⚠️ Quality assessment failed: {e}")
             return 5.0, "Assessment failed due to API error"
 
-    def _analyze_selective_insights(self, turn_data: Dict) -> Optional[str]:
+    def _analyze_selective_insights(self, turn_data: dict) -> str | None:
         """Focus on the most promising aspects of the turn data."""
 
         # Prepare action sequence
@@ -554,16 +620,22 @@ REASON: [brief explanation]"""
             for event in turn_data["death_events"]:
                 death_analysis += f"Turn {event['turn']}: {event['reason']}\n"
                 # Use contextual death information if available
-                if event.get('death_context'):
-                    death_analysis += f"- Dangerous action/location: {event['death_context']}\n"
+                if event.get("death_context"):
+                    death_analysis += (
+                        f"- Dangerous action/location: {event['death_context']}\n"
+                    )
                 else:
                     death_analysis += f"- Action leading to death: {event.get('action_taken', 'Unknown')}\n"
-                if event.get('death_location'):
+                if event.get("death_location"):
                     death_analysis += f"- Location: {event['death_location']}\n"
-                if event.get('death_objects'):
-                    death_analysis += f"- Objects present: {', '.join(event['death_objects'])}\n"
-                if event.get('death_messages'):
-                    death_analysis += f"- Key messages: {', '.join(event['death_messages'])}\n"
+                if event.get("death_objects"):
+                    death_analysis += (
+                        f"- Objects present: {', '.join(event['death_objects'])}\n"
+                    )
+                if event.get("death_messages"):
+                    death_analysis += (
+                        f"- Key messages: {', '.join(event['death_messages'])}\n"
+                    )
                 death_analysis += "\n"
 
         # Include agent instructions context if available
@@ -645,7 +717,7 @@ Focus on actionable insights that help the agent become better at recognizing op
             print(f"  ⚠️ Selective analysis failed: {e}")
             return None
 
-    def _analyze_escape_strategies(self, turn_data: Dict) -> Optional[str]:
+    def _analyze_escape_strategies(self, turn_data: dict) -> str | None:
         """Analyze data to identify escape strategies from stuck situations."""
 
         # Focus on recent actions and any changes
@@ -690,7 +762,7 @@ Analyze this specific stuck situation for NEWLY DISCOVERED escape insights:
    - Special command sequences that work in this context
 
 Focus on CONCRETE DISCOVERIES from this specific gameplay session rather than general navigation principles. What specific insights about items, locations, commands, or game mechanics were revealed by this stuck situation?"""
-    
+
         try:
             response = self.client.chat.completions.create(
                 model=self.analysis_model,
@@ -714,7 +786,7 @@ Focus on CONCRETE DISCOVERIES from this specific gameplay session rather than ge
             print(f"  ⚠️ Escape analysis failed: {e}")
             return None
 
-    def _analyze_full_insights(self, turn_data: Dict) -> Optional[str]:
+    def _analyze_full_insights(self, turn_data: dict) -> str | None:
         """Perform comprehensive analysis of all aspects."""
 
         # This is similar to the original episode analysis but for turn ranges
@@ -729,29 +801,38 @@ Focus on CONCRETE DISCOVERIES from this specific gameplay session rather than ge
             for event in turn_data["death_events"]:
                 death_analysis += f"Turn {event['turn']}: {event['reason']}\n"
                 # Use contextual death information if available
-                if event.get('death_context'):
-                    death_analysis += f"- Dangerous action/location: {event['death_context']}\n"
+                if event.get("death_context"):
+                    death_analysis += (
+                        f"- Dangerous action/location: {event['death_context']}\n"
+                    )
                 else:
-                    death_analysis += f"- Fatal action: {event.get('action_taken', 'Unknown')}\n"
-                death_analysis += f"- Final score: {event.get('final_score', 'Unknown')}\n"
-                if event.get('death_location'):
+                    death_analysis += (
+                        f"- Fatal action: {event.get('action_taken', 'Unknown')}\n"
+                    )
+                death_analysis += (
+                    f"- Final score: {event.get('final_score', 'Unknown')}\n"
+                )
+                if event.get("death_location"):
                     death_analysis += f"- Death location: {event['death_location']}\n"
-                if event.get('death_objects'):
+                if event.get("death_objects"):
                     death_analysis += f"- Objects at death scene: {', '.join(event['death_objects'])}\n"
-                if event.get('death_messages'):
-                    death_analysis += f"- Death messages: {', '.join(event['death_messages'])}\n"
+                if event.get("death_messages"):
+                    death_analysis += (
+                        f"- Death messages: {', '.join(event['death_messages'])}\n"
+                    )
                 death_analysis += "\n"
 
         # Load persistent wisdom from previous episodes for context
         persistent_wisdom = ""
         try:
             from config import get_config
+
             config = get_config()
             persistent_wisdom_file = config.orchestrator.persistent_wisdom_file
-            
-            with open(persistent_wisdom_file, "r", encoding="utf-8") as f:
+
+            with open(persistent_wisdom_file, encoding="utf-8") as f:
                 persistent_wisdom = f.read().strip()
-                
+
             if persistent_wisdom:
                 persistent_wisdom = f"\n\n**PERSISTENT WISDOM FROM PREVIOUS EPISODES:**\n{persistent_wisdom}\n"
         except FileNotFoundError:
@@ -822,15 +903,15 @@ Focus on actionable insights that help the agent become better at recognizing op
             print(f"  ⚠️ Full analysis failed: {e}")
             return None
 
-    def _consolidate_existing_knowledge(self) -> Optional[str]:
+    def _consolidate_existing_knowledge(self) -> str | None:
         """Consolidate and improve existing knowledge without new data."""
 
         try:
-            with open(self.output_file, "r", encoding="utf-8") as f:
+            with open(self.output_file, encoding="utf-8") as f:
                 full_knowledge = f.read()
         except:
             return None
-            
+
         # Trim map section for LLM processing (map is handled separately)
         current_knowledge = self._trim_map_section(full_knowledge)
 
@@ -887,14 +968,16 @@ Do not add new information - only reorganize and clarify existing knowledge for 
         # Load existing knowledge
         existing_knowledge = ""
         try:
-            with open(self.output_file, "r", encoding="utf-8") as f:
+            with open(self.output_file, encoding="utf-8") as f:
                 existing_knowledge = f.read()
         except:
             existing_knowledge = ""
 
         if strategy == "CONSOLIDATION_ONLY":
             # Replace entirely with consolidated version, but preserve map section
-            merged_knowledge = self._preserve_map_section(existing_knowledge, new_insights)
+            merged_knowledge = self._preserve_map_section(
+                existing_knowledge, new_insights
+            )
         else:
             # Intelligent merge
             merged_knowledge = self._merge_insights_with_existing(
@@ -902,7 +985,9 @@ Do not add new information - only reorganize and clarify existing knowledge for 
             )
             # Preserve map section after merge
             if merged_knowledge:
-                merged_knowledge = self._preserve_map_section(existing_knowledge, merged_knowledge)
+                merged_knowledge = self._preserve_map_section(
+                    existing_knowledge, merged_knowledge
+                )
 
         if not merged_knowledge:
             return False
@@ -910,22 +995,37 @@ Do not add new information - only reorganize and clarify existing knowledge for 
         # Check if condensation is needed based on size threshold
         # Remove map section for size checking since it's handled separately
         knowledge_without_map = self._trim_map_section(merged_knowledge)
-        
-        if (self.enable_condensation and 
-            len(knowledge_without_map) > self.condensation_threshold):
-            print(f"  📏 Knowledge base size ({len(knowledge_without_map)} chars) exceeds threshold ({self.condensation_threshold}), triggering condensation...")
-            
+
+        if (
+            self.enable_condensation
+            and len(knowledge_without_map) > self.condensation_threshold
+        ):
+            print(
+                f"  📏 Knowledge base size ({len(knowledge_without_map)} chars) exceeds threshold ({self.condensation_threshold}), triggering condensation..."
+            )
+
             # Apply condensation to the knowledge content (without map)
             condensed_knowledge = self._condense_knowledge_base(knowledge_without_map)
-            
+
             if condensed_knowledge and condensed_knowledge != knowledge_without_map:
                 # Condensation was successful, restore map section
-                merged_knowledge = self._preserve_map_section(existing_knowledge, condensed_knowledge)
-                print(f"  ✨ Condensation complete: {len(knowledge_without_map)} -> {len(condensed_knowledge)} chars")
+                merged_knowledge = self._preserve_map_section(
+                    existing_knowledge, condensed_knowledge
+                )
+                print(
+                    f"  ✨ Condensation complete: {len(knowledge_without_map)} -> {len(condensed_knowledge)} chars"
+                )
             else:
-                print(f"  ⚠️ Condensation failed or unnecessary, keeping original content")
-        elif not self.enable_condensation and len(knowledge_without_map) > self.condensation_threshold:
-            print(f"  ℹ️ Knowledge base size ({len(knowledge_without_map)} chars) exceeds threshold but condensation is disabled")
+                print(
+                    "  ⚠️ Condensation failed or unnecessary, keeping original content"
+                )
+        elif (
+            not self.enable_condensation
+            and len(knowledge_without_map) > self.condensation_threshold
+        ):
+            print(
+                f"  ℹ️ Knowledge base size ({len(knowledge_without_map)} chars) exceeds threshold but condensation is disabled"
+            )
 
         # Save merged knowledge
         try:
@@ -938,13 +1038,13 @@ Do not add new information - only reorganize and clarify existing knowledge for 
 
     def _merge_insights_with_existing(
         self, existing: str, new_insights: str, strategy: str
-    ) -> Optional[str]:
+    ) -> str | None:
         """Use LLM to intelligently merge new insights with existing knowledge."""
 
         if not existing.strip():
             # No existing knowledge, create new guide
             return self._create_new_knowledge_base(new_insights)
-            
+
         # Trim map section for LLM processing (map is handled separately)
         existing_without_map = self._trim_map_section(existing)
 
@@ -1001,7 +1101,8 @@ Maintain the existing structure but enhance it with the new insights."""
     def _create_new_knowledge_base(self, insights: str) -> str:
         """Create a new knowledge base from insights."""
 
-        prompt = f"""Create a comprehensive Zork strategy guide from these insights.
+        prompt = (
+            f"""Create a comprehensive Zork strategy guide from these insights.
 
 **IMPORTANT**: This knowledge base is for an AI language model, not a human player.
 - Use direct, actionable instructions that an LLM can follow
@@ -1032,7 +1133,9 @@ Maintain the existing structure but enhance it with the new insights."""
 INSIGHTS TO ANALYZE:
 {insights}
 
-Create a strategy guide that prioritizes strategic discovery frameworks, objective development through gameplay, and pattern recognition for meaningful progress. Focus on strategic insights that help the agent develop its own goals through play rather than pursue predetermined objectives. Emphasize actionable guidance for "How can I recognize and develop meaningful objectives through gameplay?" rather than "What specific things should I do in this game?"""""
+Create a strategy guide that prioritizes strategic discovery frameworks, objective development through gameplay, and pattern recognition for meaningful progress. Focus on strategic insights that help the agent develop its own goals through play rather than pursue predetermined objectives. Emphasize actionable guidance for "How can I recognize and develop meaningful objectives through gameplay?" rather than "What specific things should I do in this game?"""
+            ""
+        )
         # Incase using Qwen qwen3-30b-a3b
         prompt = r"\no_think " + prompt
         try:
@@ -1062,52 +1165,52 @@ Create a strategy guide that prioritizes strategic discovery frameworks, objecti
         """Remove the map section from knowledge content for LLM processing."""
         if not knowledge_content or "## CURRENT WORLD MAP" not in knowledge_content:
             return knowledge_content
-            
+
         # Remove the mermaid diagram section more precisely
         # Look for the pattern: ## CURRENT WORLD MAP followed by ```mermaid...```
-        pattern = r'## CURRENT WORLD MAP\s*\n\s*```mermaid\s*\n.*?\n```'
-        
+        pattern = r"## CURRENT WORLD MAP\s*\n\s*```mermaid\s*\n.*?\n```"
+
         # Remove the mermaid diagram section while preserving other content
-        knowledge_only = re.sub(pattern, '', knowledge_content, flags=re.DOTALL)
-        
+        knowledge_only = re.sub(pattern, "", knowledge_content, flags=re.DOTALL)
+
         # Clean up any extra whitespace that might be left
-        knowledge_only = re.sub(r'\n\s*\n\s*\n', '\n\n', knowledge_only)
-        
+        knowledge_only = re.sub(r"\n\s*\n\s*\n", "\n\n", knowledge_only)
+
         return knowledge_only.strip()
 
     def _preserve_map_section(self, original_knowledge: str, new_knowledge: str) -> str:
         """Preserve the map section from original knowledge in the new knowledge."""
         if not original_knowledge or "## CURRENT WORLD MAP" not in original_knowledge:
             return new_knowledge
-            
+
         # Extract map section from original
         map_start = original_knowledge.find("## CURRENT WORLD MAP")
         if map_start == -1:
             return new_knowledge
-            
+
         map_section = original_knowledge[map_start:]
-        
+
         # Add map section to new knowledge
         return f"{new_knowledge.rstrip()}\n\n{map_section}"
 
-    def _condense_knowledge_base(self, verbose_knowledge: str) -> Optional[str]:
+    def _condense_knowledge_base(self, verbose_knowledge: str) -> str | None:
         """
         Use the info_ext_model to condense a knowledge base into a more concise format.
-        
+
         This step focuses purely on reformatting and removing redundancy without
         adding new strategies or losing critical information.
-        
+
         Args:
             verbose_knowledge: The full knowledge base content (without map section)
-            
+
         Returns:
             Condensed knowledge base or None if condensation failed
         """
-        
+
         if not verbose_knowledge or len(verbose_knowledge) < 1000:
             # Don't condense if content is already short
             return verbose_knowledge
-            
+
         prompt = f"""You are tasked with condensing this Zork strategy guide into a more concise format while preserving ALL critical information.
 
 **CRITICAL REQUIREMENTS**:
@@ -1137,40 +1240,46 @@ Focus on creating a guide that is information-dense but highly readable for an A
         try:
             messages = [
                 {
-                    "role": "system", 
-                    "content": "You are an expert technical writer specializing in condensing strategic guides for AI systems. Your goal is to maximize information density while preserving completeness and accuracy. Never add new information - only reorganize and consolidate existing content."
+                    "role": "system",
+                    "content": "You are an expert technical writer specializing in condensing strategic guides for AI systems. Your goal is to maximize information density while preserving completeness and accuracy. Never add new information - only reorganize and consolidate existing content.",
                 },
-                {"role": "user", "content": prompt}
+                {"role": "user", "content": prompt},
             ]
-            
+
             # Log the condensation prompt if enabled
             self._log_prompt_to_file(messages, "knowledge_condensation")
-            
+
             response = self.client.chat.completions.create(
                 model=self.info_ext_model,
                 messages=messages,
                 temperature=self.extractor_sampling.temperature,
-                top_p=getattr(self.extractor_sampling, 'top_p', None),
-                top_k=getattr(self.extractor_sampling, 'top_k', None), 
-                min_p=getattr(self.extractor_sampling, 'min_p', None),
+                top_p=getattr(self.extractor_sampling, "top_p", None),
+                top_k=getattr(self.extractor_sampling, "top_k", None),
+                min_p=getattr(self.extractor_sampling, "min_p", None),
                 max_tokens=self.analysis_sampling.max_tokens or 5000,
             )
-            
+
             condensed_content = response.content.strip()
-            
+
             # Validate that condensation was successful and actually shorter
             if condensed_content and len(condensed_content) < len(verbose_knowledge):
                 # Provide both character and token estimates for better feedback
                 original_tokens = estimate_tokens(verbose_knowledge)
                 condensed_tokens = estimate_tokens(condensed_content)
-                
-                print(f"  📝 Knowledge condensed: {len(verbose_knowledge)} -> {len(condensed_content)} characters ({len(condensed_content)/len(verbose_knowledge)*100:.1f}%)")
-                print(f"      Token estimate: {original_tokens} -> {condensed_tokens} tokens ({condensed_tokens/original_tokens*100:.1f}%)")
+
+                print(
+                    f"  📝 Knowledge condensed: {len(verbose_knowledge)} -> {len(condensed_content)} characters ({len(condensed_content)/len(verbose_knowledge)*100:.1f}%)"
+                )
+                print(
+                    f"      Token estimate: {original_tokens} -> {condensed_tokens} tokens ({condensed_tokens/original_tokens*100:.1f}%)"
+                )
                 return condensed_content
             else:
-                print(f"  ⚠️ Condensation failed or didn't reduce size - keeping original")
+                print(
+                    "  ⚠️ Condensation failed or didn't reduce size - keeping original"
+                )
                 return verbose_knowledge
-                
+
         except Exception as e:
             print(f"  ⚠️ Knowledge condensation failed: {e}")
             return verbose_knowledge  # Return original on failure
@@ -1178,37 +1287,37 @@ Focus on creating a guide that is information-dense but highly readable for an A
     def update_knowledge_with_map(self, episode_id: str, game_map: MapGraph) -> bool:
         """
         Update the knowledge base with current map information.
-        
+
         Args:
             episode_id: Current episode ID
             game_map: The current MapGraph instance
-            
+
         Returns:
             True if map was updated, False if skipped
         """
         print("🗺️ Updating knowledge base with current map...")
-        
+
         # Generate mermaid diagram from current map
         mermaid_map = game_map.render_mermaid()
         if not mermaid_map or not mermaid_map.strip():
             print("  ⚠️ No map data available to update")
             return False
-            
+
         # Load existing knowledge
         existing_knowledge = ""
         try:
-            with open(self.output_file, "r", encoding="utf-8") as f:
+            with open(self.output_file, encoding="utf-8") as f:
                 existing_knowledge = f.read()
         except:
             existing_knowledge = ""
-            
+
         # Update or add map section
         updated_knowledge = self._update_map_section(existing_knowledge, mermaid_map)
-        
+
         if not updated_knowledge:
             print("  ⚠️ Failed to update map section")
             return False
-            
+
         # Save updated knowledge
         try:
             with open(self.output_file, "w", encoding="utf-8") as f:
@@ -1219,9 +1328,11 @@ Focus on creating a guide that is information-dense but highly readable for an A
             print(f"  ⚠️ Failed to save updated knowledge: {e}")
             return False
 
-    def _update_map_section(self, existing_knowledge: str, mermaid_map: str) -> Optional[str]:
+    def _update_map_section(
+        self, existing_knowledge: str, mermaid_map: str
+    ) -> str | None:
         """Update or add the map section to the knowledge base."""
-        
+
         map_section = f"""
 
 ## CURRENT WORLD MAP
@@ -1231,21 +1342,21 @@ Focus on creating a guide that is information-dense but highly readable for an A
 ```
 
 """
-        
+
         # Check if there's already a map section
         if "## CURRENT WORLD MAP" in existing_knowledge:
             # Replace existing map section
-            lines = existing_knowledge.split('\n')
+            lines = existing_knowledge.split("\n")
             new_lines = []
             in_map_section = False
             in_mermaid_block = False
-            
+
             for line in lines:
                 if line.strip() == "## CURRENT WORLD MAP":
                     in_map_section = True
                     new_lines.append(line)
                     continue
-                    
+
                 if in_map_section:
                     if line.strip().startswith("```mermaid"):
                         in_mermaid_block = True
@@ -1270,8 +1381,8 @@ Focus on creating a guide that is information-dense but highly readable for an A
                         continue
                 else:
                     new_lines.append(line)
-                    
-            return '\n'.join(new_lines)
+
+            return "\n".join(new_lines)
         else:
             # Add new map section at the end
             if existing_knowledge.strip():
@@ -1284,72 +1395,76 @@ This knowledge base contains discovered information about the Zork game world, i
 
 {map_section}"""
 
-    def _build_map_from_logs(self, episode_id: str) -> Optional[str]:
+    def _build_map_from_logs(self, episode_id: str) -> str | None:
         """
         Build a mermaid map from log data for a specific episode.
-        
+
         Args:
             episode_id: Episode ID to extract map data for
-            
+
         Returns:
             Mermaid diagram string or None if failed
         """
         try:
             # Create a temporary MapGraph to build from logs
             temp_map = MapGraph()
-            
-            with open(self.log_file, "r", encoding="utf-8") as f:
+
+            with open(self.log_file, encoding="utf-8") as f:
                 for line in f:
                     try:
                         log_entry = json.loads(line.strip())
-                        
+
                         # Skip entries not from this episode
                         if log_entry.get("episode_id") != episode_id:
                             continue
-                            
+
                         event_type = log_entry.get("event_type", "")
-                        
+
                         if event_type == "extracted_info":
                             extracted_info = log_entry.get("extracted_info", {})
-                            location_name = extracted_info.get("current_location_name", "")
+                            location_name = extracted_info.get(
+                                "current_location_name", ""
+                            )
                             exits = extracted_info.get("exits", [])
-                            
+
                             if location_name and location_name != "Unknown Location":
                                 # Add room and exits
                                 temp_map.add_room(location_name)
                                 temp_map.update_room_exits(location_name, exits)
-                                
+
                         elif event_type == "movement_connection_created":
                             from_room = log_entry.get("from_room", "")
                             to_room = log_entry.get("to_room", "")
                             action = log_entry.get("action", "")
-                            
+
                             if from_room and to_room and action:
                                 temp_map.add_connection(from_room, action, to_room)
-                                
+
                     except json.JSONDecodeError:
                         continue
-                        
+
             # Generate mermaid representation
             mermaid_map = temp_map.render_mermaid()
             return mermaid_map if mermaid_map and mermaid_map.strip() else None
-            
+
         except Exception as e:
             print(f"  ⚠️ Failed to build map from logs: {e}")
             return None
 
-    def update_knowledge_section(self, section_id: str, content: str, quality_score: float = None) -> bool:
+    def update_knowledge_section(
+        self, section_id: str, content: str, quality_score: float = None
+    ) -> bool:
         """
         Update a specific section of the knowledge base without affecting other sections.
-        
+
         This enables granular updates similar to the Pokemon agent's sectioned approach,
         while maintaining ZorkGPT's quality assessment principles.
-        
+
         Args:
             section_id: The section to update (e.g., "items", "locations", "dangers")
             content: The new content for this section
             quality_score: Optional quality score for immediate updates
-            
+
         Returns:
             True if the section was updated, False otherwise
         """
@@ -1357,39 +1472,41 @@ This knowledge base contains discovered information about the Zork game world, i
             # If no knowledge base exists, create with this section
             self._create_sectioned_knowledge_base(section_id, content)
             return True
-            
+
         try:
-            with open(self.output_file, "r", encoding="utf-8") as f:
+            with open(self.output_file, encoding="utf-8") as f:
                 existing_content = f.read()
-                
+
             # Parse existing sections
             sections = self._parse_knowledge_sections(existing_content)
-            
+
             # Update the specific section
             sections[section_id] = content
-            
+
             # Reassemble knowledge base
             updated_knowledge = self._reassemble_knowledge_sections(sections)
-            
+
             # Preserve map section if it exists
             if "## CURRENT WORLD MAP" in existing_content:
-                updated_knowledge = self._preserve_map_section(existing_content, updated_knowledge)
-            
+                updated_knowledge = self._preserve_map_section(
+                    existing_content, updated_knowledge
+                )
+
             # Write updated knowledge base
             with open(self.output_file, "w", encoding="utf-8") as f:
                 f.write(updated_knowledge)
-                
+
             print(f"  ✅ Updated knowledge section: {section_id}")
             return True
-            
+
         except Exception as e:
             print(f"  ⚠️ Failed to update knowledge section {section_id}: {e}")
             return False
 
-    def _parse_knowledge_sections(self, content: str) -> Dict[str, str]:
+    def _parse_knowledge_sections(self, content: str) -> dict[str, str]:
         """Parse existing knowledge base into sections."""
         sections = {}
-        
+
         # Define section patterns
         section_patterns = {
             "strategies": r"## 1\. \*\*Key Successful Strategies\*\*(.*?)(?=## \d+\.|\n## CURRENT WORLD MAP|$)",
@@ -1400,15 +1517,15 @@ This knowledge base contains discovered information about the Zork game world, i
             "death_prevention": r"## 6\. \*\*Death Prevention\*\*(.*?)(?=## \d+\.|\n## CURRENT WORLD MAP|$)",
             "learning": r"## 7\. \*\*Learning Opportunities\*\*(.*?)(?=## \d+\.|\n## CURRENT WORLD MAP|$)",
         }
-        
+
         for section_id, pattern in section_patterns.items():
             match = re.search(pattern, content, re.DOTALL)
             if match:
                 sections[section_id] = match.group(1).strip()
-                
+
         return sections
 
-    def _reassemble_knowledge_sections(self, sections: Dict[str, str]) -> str:
+    def _reassemble_knowledge_sections(self, sections: dict[str, str]) -> str:
         """Reassemble sections into a complete knowledge base."""
         header = """# **Zork Game World Knowledge Base (Merged and Enhanced)**
 
@@ -1417,7 +1534,7 @@ This knowledge base contains discovered information about the Zork game world, i
 ---
 
 """
-        
+
         section_templates = {
             "strategies": "## 1. **Key Successful Strategies**\n\n{content}\n\n---\n\n",
             "mistakes": "## 2. **Critical Mistakes**\n\n{content}\n\n---\n\n",
@@ -1427,90 +1544,99 @@ This knowledge base contains discovered information about the Zork game world, i
             "death_prevention": "## 6. **Death Prevention**\n\n{content}\n\n---\n\n",
             "learning": "## 7. **Learning Opportunities**\n\n{content}\n\n---\n\n",
         }
-        
+
         assembled = header
         for section_id, template in section_templates.items():
             if section_id in sections:
                 assembled += template.format(content=sections[section_id])
-                
+
         return assembled
 
-    def _create_sectioned_knowledge_base(self, initial_section: str, content: str) -> None:
+    def _create_sectioned_knowledge_base(
+        self, initial_section: str, content: str
+    ) -> None:
         """Create a new knowledge base with sections, starting with the given section."""
         with open(self.output_file, "w", encoding="utf-8") as f:
             f.write(f"# Zork Strategy Guide\n\n## {initial_section}\n{content}\n")
 
-    def synthesize_inter_episode_wisdom(self, episode_data: Dict) -> bool:
+    def synthesize_inter_episode_wisdom(self, episode_data: dict) -> bool:
         """
         Synthesize persistent wisdom from episode completion that should carry forward
         to future episodes. Focuses on deaths, major discoveries, and cross-episode patterns.
-        
+
         Args:
             episode_data: Dictionary containing episode summary information
-            
+
         Returns:
             True if synthesis was performed and wisdom was updated, False if skipped
         """
         from config import get_config
+
         config = get_config()
-        
+
         persistent_wisdom_file = config.orchestrator.persistent_wisdom_file
-        
-        print(f"🔄 Synthesizing inter-episode wisdom from episode {episode_data['episode_id']}...")
-        
+
+        print(
+            f"🔄 Synthesizing inter-episode wisdom from episode {episode_data['episode_id']}..."
+        )
+
         # Extract key episode data for synthesis
-        episode_id = episode_data['episode_id']
-        turn_count = episode_data['turn_count']
-        final_score = episode_data['final_score']
-        death_count = episode_data['death_count']
-        episode_ended_in_death = episode_data['episode_ended_in_death']
-        avg_critic_score = episode_data['avg_critic_score']
-        
+        episode_id = episode_data["episode_id"]
+        turn_count = episode_data["turn_count"]
+        final_score = episode_data["final_score"]
+        death_count = episode_data["death_count"]
+        episode_ended_in_death = episode_data["episode_ended_in_death"]
+        avg_critic_score = episode_data["avg_critic_score"]
+
         # Always synthesize if episode ended in death (critical learning event)
         # or if significant progress was made (score > 50 or many turns)
         should_synthesize = (
-            episode_ended_in_death or 
-            final_score >= 50 or 
-            turn_count >= 100 or
-            avg_critic_score >= 0.3
+            episode_ended_in_death
+            or final_score >= 50
+            or turn_count >= 100
+            or avg_critic_score >= 0.3
         )
-        
+
         if not should_synthesize:
-            print(f"  ⚠️ Episode not significant enough for wisdom synthesis")
-            print(f"     - Death: {episode_ended_in_death}, Score: {final_score}, Turns: {turn_count}, Avg Critic: {avg_critic_score:.2f}")
+            print("  ⚠️ Episode not significant enough for wisdom synthesis")
+            print(
+                f"     - Death: {episode_ended_in_death}, Score: {final_score}, Turns: {turn_count}, Avg Critic: {avg_critic_score:.2f}"
+            )
             return False
-        
+
         # Extract turn-by-turn data for death analysis and major discoveries
         turn_data = self._extract_turn_window_data(episode_id, 1, turn_count)
         if not turn_data:
-            print(f"  ⚠️ Could not extract turn data for wisdom synthesis")
+            print("  ⚠️ Could not extract turn data for wisdom synthesis")
             return False
-        
+
         # Load existing persistent wisdom
         existing_wisdom = ""
         try:
-            with open(persistent_wisdom_file, "r", encoding="utf-8") as f:
+            with open(persistent_wisdom_file, encoding="utf-8") as f:
                 existing_wisdom = f.read()
         except FileNotFoundError:
             # No existing wisdom file - this is fine for first episode
             existing_wisdom = ""
         except Exception as e:
             print(f"  ⚠️ Could not load existing wisdom: {e}")
-        
+
         # Prepare death event analysis if applicable
         death_analysis = ""
         if episode_ended_in_death or turn_data.get("death_events"):
             death_analysis = "\n\nDEATH EVENT ANALYSIS:\n"
             for event in turn_data.get("death_events", []):
-                death_analysis += f"Episode {episode_id}, Turn {event['turn']}: {event['reason']}\n"
-                if event.get('death_context'):
+                death_analysis += (
+                    f"Episode {episode_id}, Turn {event['turn']}: {event['reason']}\n"
+                )
+                if event.get("death_context"):
                     death_analysis += f"- Context: {event['death_context']}\n"
-                if event.get('death_location'):
+                if event.get("death_location"):
                     death_analysis += f"- Location: {event['death_location']}\n"
-                if event.get('action_taken'):
+                if event.get("action_taken"):
                     death_analysis += f"- Fatal action: {event['action_taken']}\n"
                 death_analysis += "\n"
-        
+
         # Create synthesis prompt
         prompt = f"""Analyze this completed Zork episode and update the persistent wisdom base with key learnings that should carry forward to future episodes.
 
@@ -1562,9 +1688,9 @@ Provide the updated persistent wisdom as a well-organized markdown document. If 
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are an expert at extracting persistent strategic wisdom from interactive fiction gameplay that can help AI agents improve across multiple game sessions. Focus on actionable patterns, danger recognition, and cross-episode learning."
+                        "content": "You are an expert at extracting persistent strategic wisdom from interactive fiction gameplay that can help AI agents improve across multiple game sessions. Focus on actionable patterns, danger recognition, and cross-episode learning.",
                     },
-                    {"role": "user", "content": prompt}
+                    {"role": "user", "content": prompt},
                 ],
                 temperature=self.analysis_sampling.temperature,
                 top_p=self.analysis_sampling.top_p,
@@ -1574,25 +1700,29 @@ Provide the updated persistent wisdom as a well-organized markdown document. If 
             )
 
             wisdom_response = response.content.strip()
-            
+
             if wisdom_response == "NO_SIGNIFICANT_WISDOM":
-                print(f"  ⚠️ No significant wisdom to synthesize from this episode")
+                print("  ⚠️ No significant wisdom to synthesize from this episode")
                 return False
-            
+
             # Save the updated persistent wisdom
             try:
                 with open(persistent_wisdom_file, "w", encoding="utf-8") as f:
                     f.write(wisdom_response)
-                
-                print(f"  ✅ Persistent wisdom updated and saved to {persistent_wisdom_file}")
-                print(f"     - Synthesized from episode with {turn_count} turns, score {final_score}")
-                
+
+                print(
+                    f"  ✅ Persistent wisdom updated and saved to {persistent_wisdom_file}"
+                )
+                print(
+                    f"     - Synthesized from episode with {turn_count} turns, score {final_score}"
+                )
+
                 return True
-                
+
             except Exception as e:
                 print(f"  ⚠️ Failed to save persistent wisdom: {e}")
                 return False
-            
+
         except Exception as e:
             print(f"  ⚠️ Inter-episode wisdom synthesis failed: {e}")
             return False

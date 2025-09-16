@@ -1,10 +1,9 @@
+import os
+import queue
+import re
 import subprocess
 import threading
-import queue
 import time
-import re
-from typing import List
-import os
 
 
 class ZorkInterface:
@@ -122,11 +121,11 @@ class ZorkInterface:
 
         # Get the response
         response = self.get_response().strip()
-        
+
         # Enhanced logging for debug - capture all game responses
         if self.logger:
             self.logger.info(
-                f"[DEBUG] Game command and response",
+                "[DEBUG] Game command and response",
                 extra={
                     "extras": {
                         "event_type": "game_command_response_debug",
@@ -136,21 +135,26 @@ class ZorkInterface:
                     }
                 },
             )
-        
+
         return response
 
-    def send_interactive_command(self, initial_command: str, follow_up_input: str, 
-                               prompt_keyword: str, success_keyword: str, 
-                               timeout: float = 10.0) -> tuple[bool, str]:
+    def send_interactive_command(
+        self,
+        initial_command: str,
+        follow_up_input: str,
+        prompt_keyword: str,
+        success_keyword: str,
+        timeout: float = 10.0,
+    ) -> tuple[bool, str]:
         """Send a command that requires interactive input (like save/restore).
-        
+
         Args:
             initial_command: The first command to send (e.g., "save")
             follow_up_input: The response to the prompt (e.g., filename)
             prompt_keyword: Text to look for in Zork's prompt (e.g., "Please enter a filename")
             success_keyword: Text indicating success (e.g., "Ok.")
             timeout: Maximum time to wait for responses
-            
+
         Returns:
             tuple: (success: bool, full_response: str)
         """
@@ -159,70 +163,73 @@ class ZorkInterface:
 
         start_time = time.time()
         full_response = ""
-        
+
         try:
             # Send the initial command and filename together for save/restore
             # Zork's save/restore commands don't produce output until filename is provided
             self.process.stdin.write(initial_command + "\n")
             self.process.stdin.flush()
-            
+
             # Send the follow-up input immediately (for save/restore this is the filename)
             self.process.stdin.write(follow_up_input + "\n")
             self.process.stdin.flush()
-            
+
             # Wait for the combined response (prompt + result)
             time.sleep(1.0)  # Give Zork time to process both commands
-            
+
             response = self.get_response()
             full_response = response
-            
+
             # Check if we got both the prompt and success message
             has_prompt = prompt_keyword.lower() in response.lower()
             has_success = success_keyword.lower() in response.lower()
-            
+
             # For save/restore, success means we got both prompt and "Ok." in the response
             success_found = has_prompt and has_success
-            
+
             return success_found, full_response.strip()
-            
+
         except Exception as e:
-            return False, f"Error during interactive command: {e}. Response: {full_response}"
+            return (
+                False,
+                f"Error during interactive command: {e}. Response: {full_response}",
+            )
 
     def trigger_zork_save(self, filename: str) -> bool:
         """Save the current Zork game state to a file.
-        
+
         Args:
             filename: The filename to save to (relative to Zork's working directory)
                      Note: Zork will automatically add .qzl extension
-            
+
         Returns:
             bool: True if save was successful
         """
         if not self.is_running():
-            print(f"Save failed: Zork process not running")
+            print("Save failed: Zork process not running")
             return False
-            
+
         # Try a more robust save approach
         try:
             # Send save command
             self.process.stdin.write("save\n")
             self.process.stdin.flush()
-            
+
             # Wait a moment for prompt
             time.sleep(0.5)
-            
+
             # Send filename
             self.process.stdin.write(filename + "\n")
             self.process.stdin.flush()
-            
+
             # Wait longer for the save operation to complete
             time.sleep(2.0)
-            
+
             # Get the response
             response = self.get_response()
-            
+
             print(f"Save command response: {repr(response)}")
-            
+
             # Check for various success indicators
             response_lower = response.lower()
             success_indicators = [
@@ -231,7 +238,7 @@ class ZorkInterface:
                 "done",
                 ".qzl",  # Zork mentions the .qzl file extension
             ]
-            
+
             # Check for failure indicators
             failure_indicators = [
                 "can't",
@@ -239,55 +246,56 @@ class ZorkInterface:
                 "unable",
                 "error",
                 "failed",
-                "invalid"
+                "invalid",
             ]
-            
-            has_success = any(indicator in response_lower for indicator in success_indicators)
-            has_failure = any(indicator in response_lower for indicator in failure_indicators)
-            
+
+            has_success = any(
+                indicator in response_lower for indicator in success_indicators
+            )
+            has_failure = any(
+                indicator in response_lower for indicator in failure_indicators
+            )
+
             # If we see failure indicators, definitely failed
             if has_failure:
                 print(f"Save failed - failure indicator found: {response}")
                 return False
-            
+
             # If we see success indicators, probably succeeded
             if has_success:
                 print(f"Save succeeded - success indicator found: {response}")
                 return True
-            
+
             # If response is very short or empty, might have worked
             if len(response.strip()) < 20:
                 print(f"Save may have succeeded - minimal response: {response}")
                 return True
-            
+
             # Default to failure if unclear
             print(f"Save status unclear - defaulting to failure: {response}")
             return False
-            
+
         except Exception as e:
             print(f"Save failed with exception: {e}")
             return False
 
     def trigger_zork_restore(self, filename: str) -> bool:
         """Restore a Zork game state from a file.
-        
+
         Args:
             filename: The filename to restore from (relative to Zork's working directory)
                      Note: Should match the name used in save (Zork adds .qzl extension)
-            
+
         Returns:
             bool: True if restore was successful
         """
         success, response = self.send_interactive_command(
-            "restore", 
-            filename, 
-            "Please enter a filename", 
-            "Ok."
+            "restore", filename, "Please enter a filename", "Ok."
         )
-        
+
         if not success:
             print(f"Restore failed: {response}")
-        
+
         return success
 
     def close(self):
@@ -302,7 +310,7 @@ class ZorkInterface:
         if not score_text:
             score_text = self.send_command("score").strip()
         current_score, max_score = 0, 0  # Default if parsing fails
-        
+
         # Try structured format first: "> Room Name ... Score: X ... Moves: Y"
         structured_match = re.search(
             r">\s*(.+?)\s+Score:\s*(\d+)\s+Moves:\s*(\d+)", score_text, re.MULTILINE
@@ -311,7 +319,7 @@ class ZorkInterface:
             current_score = int(structured_match.group(2))
             max_score = 585  # Default max score for Zork I when not specified
             return current_score, max_score
-        
+
         # "Your score is 0 [total of 350 points], in 1 moves."
         match = re.search(
             r"Your score is (\d+)\s*\[total of (\d+) points], in \d+ moves.", score_text
@@ -383,26 +391,26 @@ class ZorkInterface:
 
         return False, None
 
-    def inventory(self) -> List[str]:
+    def inventory(self) -> list[str]:
         """Get the current inventory of the player.
         Parses Zork's output to handle items, items in containers, and empty inventory.
         """
         inv_text = self.send_command("inventory")
         return self._parse_inventory(inv_text)
 
-    def inventory_with_response(self) -> tuple[List[str], str]:
+    def inventory_with_response(self) -> tuple[list[str], str]:
         """Get the current inventory and the raw response text.
         Returns both the parsed inventory and the raw response for game-over checking.
         """
         inv_text = self.send_command("inventory")
         return self._parse_inventory(inv_text), inv_text
 
-    def _parse_inventory(self, inv_text: str) -> List[str]:
+    def _parse_inventory(self, inv_text: str) -> list[str]:
         """Parse inventory text into a list of items."""
         # Enhanced logging for debug - capture full response text
         if self.logger:
             self.logger.info(
-                f"[DEBUG] Inventory parsing input",
+                "[DEBUG] Inventory parsing input",
                 extra={
                     "extras": {
                         "event_type": "inventory_parse_debug",
@@ -411,21 +419,31 @@ class ZorkInterface:
                     }
                 },
             )
-        
+
         # Check for death messages that shouldn't be parsed as inventory
         death_indicators = [
-            "you have died", "you are dead", "slavering fangs", "eaten by a grue",
-            "you have been killed", "****  you have died  ****", "fatal",
-            "troll", "axe hits you", "puts you to death", "last blow was too much",
-            "i'm afraid you are dead", "conquering his fears", "flat of the troll's axe"
+            "you have died",
+            "you are dead",
+            "slavering fangs",
+            "eaten by a grue",
+            "you have been killed",
+            "****  you have died  ****",
+            "fatal",
+            "troll",
+            "axe hits you",
+            "puts you to death",
+            "last blow was too much",
+            "i'm afraid you are dead",
+            "conquering his fears",
+            "flat of the troll's axe",
         ]
-        
+
         inv_text_lower = inv_text.lower()
         for indicator in death_indicators:
             if indicator in inv_text_lower:
                 if self.logger:
                     self.logger.warning(
-                        f"Death text detected in inventory response",
+                        "Death text detected in inventory response",
                         extra={
                             "extras": {
                                 "event_type": "death_text_in_inventory",
@@ -435,7 +453,7 @@ class ZorkInterface:
                         },
                     )
                 return []  # Return empty inventory if death text detected
-        
+
         # Check for empty inventory (case insensitive)
         if "empty-handed" in inv_text.lower() or "empty handed" in inv_text.lower():
             return []
@@ -443,47 +461,51 @@ class ZorkInterface:
         lines = inv_text.split("\n")
         result = []
         skip_lines = set()
-        
+
         # First pass: identify structure and collect all lines that should be skipped
         for i, line in enumerate(lines):
             stripped = line.strip()
             if not stripped:
                 skip_lines.add(i)
                 continue
-                
+
             # Skip game status lines
-            if stripped.startswith(">") and ("Score:" in stripped or "Moves:" in stripped):
+            if stripped.startswith(">") and (
+                "Score:" in stripped or "Moves:" in stripped
+            ):
                 skip_lines.add(i)
                 continue
-                
+
             # Skip "You are carrying:" header
             if stripped == "You are carrying:":
                 skip_lines.add(i)
                 continue
-                
+
             # Container header line - mark it and its contents for special processing
             if stripped.startswith("The") and "contains:" in stripped:
                 skip_lines.add(i)
                 # Mark following indented lines as container contents
                 j = i + 1
-                while j < len(lines) and (lines[j].startswith("  ") or lines[j].strip() == ""):
+                while j < len(lines) and (
+                    lines[j].startswith("  ") or lines[j].strip() == ""
+                ):
                     if lines[j].strip():  # Non-empty indented line
                         skip_lines.add(j)
                     j += 1
-        
+
         # Second pass: collect items and handle containers
         containers = {}
         for i, line in enumerate(lines):
             stripped = line.strip()
-            
+
             if i in skip_lines or not stripped:
                 continue
-                
+
             # This is a regular item
             if stripped.endswith("."):
                 stripped = stripped[:-1]
             result.append(stripped)
-        
+
         # Third pass: find containers and their contents
         for i, line in enumerate(lines):
             stripped = line.strip()
@@ -492,7 +514,7 @@ class ZorkInterface:
                 container_match = re.search(r"The\s+([^:]+)\s+contains:", stripped)
                 if container_match:
                     container_name = container_match.group(1).strip()
-                    
+
                     # Find first content item
                     first_content = None
                     j = i + 1
@@ -508,7 +530,7 @@ class ZorkInterface:
                         else:
                             break
                         j += 1
-                    
+
                     # Check if this container is already in our result (top-level item)
                     found_in_result = False
                     if first_content:
@@ -517,7 +539,7 @@ class ZorkInterface:
                                 result[idx] = f"{item}: Containing {first_content}"
                                 found_in_result = True
                                 break
-                    
+
                     # If not found in result, it might be a nested container - add it as a separate item
                     if not found_in_result and first_content:
                         result.append(f"A {container_name}: Containing {first_content}")
@@ -525,7 +547,7 @@ class ZorkInterface:
         # Enhanced logging for debug - capture final parsed result
         if self.logger:
             self.logger.info(
-                f"[DEBUG] Inventory parsing result",
+                "[DEBUG] Inventory parsing result",
                 extra={
                     "extras": {
                         "event_type": "inventory_parse_result",

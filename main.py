@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
+import time
+
 from zork_api import ZorkInterface
 from zork_orchestrator import ZorkOrchestrator
-import time
 
 
 def run_episode():
@@ -11,7 +12,7 @@ def run_episode():
     orchestrator = ZorkOrchestrator()
 
     print("🚀 Starting long episode with adaptive knowledge management...")
-    print(f"📋 Configuration:")
+    print("📋 Configuration:")
     print(f"  - Max turns: {orchestrator.max_turns_per_episode}")
     print(
         f"  - Knowledge update interval: {orchestrator.knowledge_update_interval} turns"
@@ -27,11 +28,15 @@ def run_episode():
     print(f"  - Save file template: {orchestrator.zork_save_filename_template}")
     print()
 
-    with ZorkInterface(timeout=1.0, working_directory=orchestrator.zork_workdir_abs_path, logger=orchestrator.logger) as zork_game:
+    with ZorkInterface(
+        timeout=1.0,
+        working_directory=orchestrator.zork_workdir_abs_path,
+        logger=orchestrator.logger,
+    ) as zork_game:
         try:
             final_score = orchestrator.play_episode(zork_game)
 
-            print(f"\n🎯 Episode Complete!")
+            print("\n🎯 Episode Complete!")
             print(f"  - Final score: {final_score}")
             print(f"  - Turns played: {orchestrator.turn_count}")
 
@@ -55,7 +60,7 @@ def run_episode():
 
             # Show the final knowledge base
             try:
-                with open("knowledgebase.md", "r") as f:
+                with open("knowledgebase.md") as f:
                     knowledge_content = f.read()
                     print(
                         f"\n📚 Final knowledge base ({len(knowledge_content)} characters):"

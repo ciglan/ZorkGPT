@@ -22,29 +22,42 @@ s3 = [
 [dependency-groups]
 dev = [
     "pytest>=8.3.5",
+    "ruff>=0.6.0",
+    "mypy>=1.8.0",
+    "black>=24.0.0",
 ]
 
 [tool.zorkgpt.llm]
 # LLM Configuration
-client_base_url = "https://openrouter.ai/api/v1"
-agent_model = "qwen/qwen3-235b-a22b"
-info_ext_model = "gemma-3-12b-it-qat"
+## client_base_url = "https://openrouter.ai/api/v1"
+## agent_model = "qwen/qwen3-235b-a22b"
+## info_ext_model = "gemma-3-12b-it-qat"
+### info_ext_model = "google/gemma-3-12b-it"
+##critic_model = "gemma-3-12b-it-qat"
+### critic_model = "google/gemma-3-12b-it"
+###analysis_model = "meta-llama/llama-4-scout"
+
+
+# LLM Configuration
+client_base_url = "http://localhost:11434/v1"
+agent_model = "qwen3:14b"
+info_ext_model = "qwen3:14b"
 # info_ext_model = "google/gemma-3-12b-it"
-critic_model = "gemma-3-12b-it-qat"
+critic_model = "qwen3:14b"
 # critic_model = "google/gemma-3-12b-it"
-analysis_model = "meta-llama/llama-4-scout"
+analysis_model = "qwen3:14b"
 
 # Per-model base URLs (optional, for cost optimization)
 # If not specified, will fall back to client_base_url
 # Examples:
 # agent_base_url = "https://api.together.xyz/v1"
-info_ext_base_url = "http://oracle.nord:1234/v1"
-critic_base_url = "http://oracle.nord:1234/v1"
+#info_ext_base_url = "http://oracle.nord:1234/v1"
+#critic_base_url = "http://oracle.nord:1234/v1"
 # analysis_base_url = "https://api.openai.com/v1"
 
 [tool.zorkgpt.retry]
 # Retry and Exponential Backoff Configuration
-max_retries = 5
+max_retries = 2
 initial_delay = 1.0           # Initial retry delay in seconds
 max_delay = 60.0              # Maximum retry delay in seconds
 exponential_base = 2.0        # Multiplier for exponential backoff
@@ -140,3 +153,123 @@ state_export_file = "current_state.json"
 [tool.zorkgpt.aws]
 # AWS Configuration (optional)
 s3_key_prefix = "zorkgpt/"
+
+# ===== LINTING AND FORMATTING TOOLS =====
+
+[tool.ruff]
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    ".venv",
+]
+
+# Same as Black.
+line-length = 88
+indent-width = 4
+
+# Assume Python 3.11+
+target-version = "py311"
+
+[tool.ruff.lint]
+# Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
+# Additional rule categories to enable
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "N",      # pep8-naming
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "SIM",    # flake8-simplify
+]
+
+# Additional rule categories to ignore
+ignore = [
+    "E501",   # line too long (handled by black)
+    "B008",   # do not perform function calls in argument defaults
+    "C901",   # too complex
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Ignore `E402` (import violations) in all `__init__.py` files
+"__init__.py" = ["E402", "F401"]
+# Ignore some rules in test files
+"tests/**/*" = ["S101", "B011"]
+# Ignore some rules in scripts
+"*.py" = ["T201", "T203"]  # print statements, pprint statements
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # Start permissive, can enable later
+disallow_incomplete_defs = false
+check_untyped_defs = true
+disallow_untyped_decorators = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+# Module-specific overrides
+[[tool.mypy.overrides]]
+module = [
+    "zork_api",
+    "llm_client",
+    "config",
+]
+ignore_errors = true  # Can enable later as you add type hints
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.pytest.ini_options]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--disable-warnings",
+    "-ra",
+]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

@@ -6,10 +6,10 @@ This script helps deploy the S3 bucket and CloudFront distribution
 for hosting the ZorkGPT Live Viewer.
 """
 
+import json
+import os
 import subprocess
 import sys
-import os
-import json
 from pathlib import Path
 
 

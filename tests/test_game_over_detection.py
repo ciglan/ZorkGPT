@@ -4,6 +4,7 @@ Unit tests for game over detection functionality.
 """
 
 import unittest
+
 from zork_api import ZorkInterface
 
 

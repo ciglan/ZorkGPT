@@ -3,7 +3,8 @@ import argparse
 import json
 import sys
 from datetime import datetime
-from logger import parse_json_logs, render_logs_as_text, format_experiences_for_rl
+
+from logger import format_experiences_for_rl, parse_json_logs, render_logs_as_text
 
 
 def calculate_runtime(start_time, end_time):
@@ -279,7 +280,7 @@ def main():
                     )
                     max_score = max(ep["score"] for ep in episodes_list)
 
-                    output += f"\n## Summary\n"
+                    output += "\n## Summary\n"
                     output += f"- **Episodes shown:** {len(episodes_list)}\n"
                     output += f"- **Average score:** {avg_score:.1f}\n"
                     output += f"- **Average turns:** {avg_turns:.1f}\n"

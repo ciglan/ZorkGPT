@@ -5,8 +5,9 @@ Focused test to verify combat detection and inventory skipping.
 """
 
 import unittest
-from zork_agent import ZorkAgent
+
 from hybrid_zork_extractor import ExtractorResponse
+from zork_agent import ZorkAgent
 from zork_api import ZorkInterface
 
 

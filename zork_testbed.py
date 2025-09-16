@@ -13,12 +13,16 @@ lightweight and self-contained for quick experimentation.
 
 from __future__ import annotations
 
-import time
+from collections import Counter
 import random
-from typing import List, Tuple, Optional
+import time
 
+from config import get_client_api_key, get_config
+from hybrid_zork_extractor import ExtractorResponse, HybridZorkExtractor
+from llm_client import LLMClientWrapper
+from logger import setup_logging
+from zork_agent import ZorkAgent
 from zork_api import ZorkInterface
-from hybrid_zork_extractor import HybridZorkExtractor, ExtractorResponse
 
 
 class SimpleAgent:
@@ -29,10 +33,10 @@ class SimpleAgent:
     This is meant as a starting point for experimentation.
     """
 
-    def __init__(self, seed: Optional[int] = None) -> None:
+    def __init__(self, seed: int | None = None) -> None:
         self.random = random.Random(seed)
 
-        self.movement_actions: List[str] = [
+        self.movement_actions: list[str] = [
             "north",
             "south",
             "east",
@@ -41,14 +45,14 @@ class SimpleAgent:
             "down",
         ]
 
-        self.utility_actions: List[str] = [
+        self.utility_actions: list[str] = [
             "look",
             "take all",
             "inventory",
         ]
 
     def choose_action(
-        self, game_state_text: str, history: List[Tuple[str, str]], turn: int
+        self, game_state_text: str, history: list[tuple[str, str]], turn: int
     ) -> str:
         """Pick a basic command to send to Zork.
 
@@ -78,88 +82,155 @@ class SimpleAgent:
         return self.random.choice(self.utility_actions)
 
 
-def run_testbed(max_turns: int = 60, turn_delay_seconds: float = 0.25) -> int:
-    """Run a minimal gameplay loop with the `SimpleAgent`.
+class ZorkTestbed:
+    def __init__(self, max_turns: int = 60, turn_delay_seconds: float = 0.25) -> None:
+        config = get_config()
 
-    Args:
-        max_turns: Maximum number of turns to play.
-        turn_delay_seconds: Delay between turns for readability.
+        self.episode_log_file = config.files.episode_log_file
+        self.json_log_file = config.files.json_log_file
+        self.logger = setup_logging(self.episode_log_file, self.json_log_file)
 
-    Returns:
-        Final Zork score at the end of the episode.
-    """
-    agent = SimpleAgent()
-    extractor = HybridZorkExtractor()
+        agent_client = LLMClientWrapper(
+            base_url=config.llm.get_base_url_for_model("agent"),
+            api_key=get_client_api_key(),
+            logger=self.logger,
+        )
 
-    with ZorkInterface(timeout=1.0) as zork:
-        # Start the game and switch to verbose mode for richer state
-        current_state = zork.start()
-        zork.send_command("verbose")
+        # Info extractor client
+        extractor_client = LLMClientWrapper(
+            base_url=config.llm.get_base_url_for_model("info_ext"),
+            api_key=get_client_api_key(),
+            logger=self.logger,
+        )
 
-        current_score, max_score = zork.score(current_state)
+        # Initialize core components with their specific clients
+        self.agent = ZorkAgent(client=agent_client, logger=self.logger, agent_prompt="simple_agent.md")
 
-        # Initial extraction of state
-        try:
-            extracted: ExtractorResponse | None = extractor.extract_info(current_state)
-            if extracted:
-                print(f"Initial location: {extracted.current_location_name}")
-                if extracted.score is not None:
-                    current_score = extracted.score
-        except Exception:
-            extracted = None
+        # Initialize hybrid extractor (combines structured parsing with LLM extraction)
+        self.extractor = HybridZorkExtractor(
+            client=extractor_client, logger=self.logger
+        )
 
-        history: List[Tuple[str, str]] = []
+        self.max_turns = max_turns
+        self.turn_delay_seconds = turn_delay_seconds
+        # self.agent = SimpleAgent()
 
-        for turn in range(1, max_turns + 1):
-            action = agent.choose_action(current_state, history, turn)
-            next_state = zork.send_command(action)
+        self.zork = ZorkInterface(timeout=1.0)
+        self.history: list[tuple[str, str]] = []
+        self.current_score = 0
+        self.max_score = 0
+        self.current_state = ""
+        self.next_state = ""
+        self.turn = 0
+        self.game_over = False
+        self.reason = ""
+        self.user_input = ""
+        self.turn_extracted = None
+        self.turn_extracted_score = 0
+        self.turn_extracted_max_score = 0
+        self.action_counts = Counter()
 
-            # Check game over based on the response
-            game_over, reason = zork.is_game_over(next_state)
-            if game_over:
-                # Capture final score from the last response if possible
-                try:
-                    current_score, max_score = zork.score(next_state)
-                except Exception:
-                    pass
 
-                print(f"Game over on turn {turn}: {reason}")
-                print(f"Final score: {current_score} / {max_score}")
-                return current_score
+    def get_action(self, current_game_state: str, history: list[tuple[str, str]], turn: int) -> tuple[str, str]:
+        # Get agent action with reasoning
+            agent_response = self.agent.get_action_with_reasoning(
+                game_state_text=current_game_state,
+                previous_actions_and_responses=self.history[
+                    -42:
+                ],  # Last 42 actions
+                action_counts=self.action_counts,
+                relevant_memories=None,
+            )
 
-            # Track history and score; attempt to update score from the process
-            history.append((action, next_state))
-            
-            # Extract structured info each turn, fall back to raw scoring
+            agent_action = agent_response["action"]
+            agent_reasoning = agent_response["reasoning"]
+            self.action_counts[agent_action] += 1
+            return agent_action, agent_reasoning
+
+    def run(self) -> int:
+        """Run a minimal gameplay loop.
+
+        Returns:
+            Final Zork score at the end of the episode.
+        """
+        print("Starting Zork testbed...")
+        print("Starting a new loop")
+
+        with self.zork:
+            # Start the game and switch to verbose mode for richer state
+            current_state = self.zork.start()
+            self.zork.send_command("verbose")
+
+            self.current_score, self.max_score = self.zork.score(current_state)
+
+            # Initial extraction of state
             try:
-                turn_extracted = extractor.extract_info(next_state)
-                if turn_extracted:
-                    # Prefer extractor score if available
-                    if turn_extracted.score is not None:
-                        current_score = turn_extracted.score
-                        max_score = max_score or 585
-                    # Print a short structured snapshot for visibility
-                    loc = turn_extracted.current_location_name
-                    exits = ", ".join(turn_extracted.exits) if turn_extracted.exits else "-"
-                    print(f"[Turn {turn}] {turn_extracted=}")
+                extracted: ExtractorResponse | None = self.extractor.extract_info(
+                    current_state
+                )
+                if extracted:
+                    print(f"Initial location: {extracted.current_location_name}")
+                    if extracted.score is not None:
+                        self.current_score = extracted.score
             except Exception:
-                # Fallback to process score when extraction fails
-                try:
-                    current_score, max_score = zork.score()
-                except Exception:
-                    pass
+                extracted = None
 
-            current_state = next_state
+            for self.turn in range(1, self.max_turns + 1):
+                print(f"Turn {self.turn}\n{current_state}")
+                action, reasoning = self.get_action(current_state, self.history, self.turn
+                )
+                print(f"Reasoning: {reasoning}")
+                print(f"Action: {action}")
+                next_state = self.zork.send_command(action)
+                print(f"Next state: {next_state}")
 
-            if turn_delay_seconds > 0:
-                time.sleep(turn_delay_seconds)
+                # Check game over based on the response
+                self.game_over, self.reason = self.zork.is_game_over(next_state)
+                if self.game_over:
+                    # Capture final score from the last response if possible
+                    try:
+                        self.current_score, self.max_score = self.zork.score(next_state)
+                    except Exception:
+                        pass
 
-            # TODO wait for use input
+                    print(f"Game over on turn {self.turn}: {self.reason}")
+                    print(f"Final score: {self.current_score} / {self.max_score}")
+                    return self.current_score
 
-        print("Max turns reached.")
-        print(f"Final score: {current_score} / {max_score}")
-        return current_score
+                # Track history and score; attempt to update score from the process
+                self.history.append((action, next_state))
+
+                # Extract structured info each turn, fall back to raw scoring
+             
+                print(f"[Turn {self.turn}] Extracting info")
+                self.turn_extracted = self.extractor.extract_info(next_state)
+                print(f"[Turn {self.turn}] {self.turn_extracted=}")
+                if self.turn_extracted:
+                    # Prefer extractor score if available
+                    if self.turn_extracted.score is not None:
+                        self.current_score = self.turn_extracted.score
+                        self.max_score = self.max_score or 585
+                    # Print a short structured snapshot for visibility
+                    loc = self.turn_extracted.current_location_name
+                    exits = (
+                        ", ".join(self.turn_extracted.exits)
+                        if self.turn_extracted.exits
+                        else "-"
+                    )
+
+                current_state = next_state
+
+                if self.turn_delay_seconds > 0:
+                    time.sleep(self.turn_delay_seconds)
+
+                # TODO wait for user input
+                self.user_input = input("Enter a command: ")
+
+            print("Max turns reached.")
+            print(f"Final score: {self.current_score} / {self.max_score}")
+            return self.current_score
 
 
 if __name__ == "__main__":
-    run_testbed()
+    testbed = ZorkTestbed()
+    testbed.run()

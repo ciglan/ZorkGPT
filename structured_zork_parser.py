@@ -11,16 +11,16 @@ eliminating the need for LLM-based location extraction in most cases.
 """
 
 import re
-from typing import Optional, Tuple, List
+
 from pydantic import BaseModel
 
 
 class StructuredZorkResponse(BaseModel):
     """Structured representation of Zork's response."""
 
-    room_name: Optional[str] = None
-    score: Optional[int] = None
-    moves: Optional[int] = None
+    room_name: str | None = None
+    score: int | None = None
+    moves: int | None = None
     game_text: str = ""
     has_structured_header: bool = False
 
@@ -98,7 +98,7 @@ class StructuredZorkParser:
             game_text=zork_response.strip(), has_structured_header=False
         )
 
-    def extract_room_name(self, zork_response: str) -> Optional[str]:
+    def extract_room_name(self, zork_response: str) -> str | None:
         """
         Quick extraction of just the room name from a Zork response.
 
@@ -113,7 +113,7 @@ class StructuredZorkParser:
 
     def extract_score_and_moves(
         self, zork_response: str
-    ) -> Tuple[Optional[int], Optional[int]]:
+    ) -> tuple[int | None, int | None]:
         """
         Quick extraction of score and move count from a Zork response.
 

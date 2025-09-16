@@ -4,8 +4,9 @@ Unit tests for inventory skipping during combat functionality.
 """
 
 import unittest
-from zork_agent import ZorkAgent
+
 from hybrid_zork_extractor import ExtractorResponse
+from zork_agent import ZorkAgent
 
 
 class TestInventorySkip(unittest.TestCase):

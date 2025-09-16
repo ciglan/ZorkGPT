@@ -6,12 +6,12 @@ This script starts a local HTTP server and opens the viewer in your default brow
 """
 
 import http.server
+import os
 import socketserver
-import webbrowser
+import sys
 import threading
 import time
-import os
-import sys
+import webbrowser
 
 
 def start_server(port=8000):

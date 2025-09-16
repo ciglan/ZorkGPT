@@ -1,8 +1,7 @@
 import json
 import logging
-import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class JSONFormatter(logging.Formatter):
@@ -18,14 +17,32 @@ class JSONFormatter(logging.Formatter):
         # Add any extra attributes that were passed via extra={}
         # This excludes standard logging attributes
         standard_attrs = {
-            'name', 'msg', 'args', 'levelname', 'levelno', 'pathname', 'filename',
-            'module', 'lineno', 'funcName', 'created', 'msecs', 'relativeCreated',
-            'thread', 'threadName', 'processName', 'process', 'message', 'exc_info',
-            'exc_text', 'stack_info', 'getMessage'
+            "name",
+            "msg",
+            "args",
+            "levelname",
+            "levelno",
+            "pathname",
+            "filename",
+            "module",
+            "lineno",
+            "funcName",
+            "created",
+            "msecs",
+            "relativeCreated",
+            "thread",
+            "threadName",
+            "processName",
+            "process",
+            "message",
+            "exc_info",
+            "exc_text",
+            "stack_info",
+            "getMessage",
         }
-        
+
         for attr_name, attr_value in record.__dict__.items():
-            if attr_name not in standard_attrs and not attr_name.startswith('_'):
+            if attr_name not in standard_attrs and not attr_name.startswith("_"):
                 log_data[attr_name] = attr_value
 
         return json.dumps(log_data)
@@ -44,12 +61,38 @@ class HumanReadableFormatter(logging.Formatter):
                 return f"\n--- Turn {record.turn} ---\n{message}"
             elif event_type == "agent_action" and hasattr(record, "agent_action"):
                 return f"Agent proposes: {record.agent_action}"
-            elif event_type == "critic_evaluation" and hasattr(record, "critic_score") and hasattr(record, "critic_justification"):
+            elif (
+                event_type == "critic_evaluation"
+                and hasattr(record, "critic_score")
+                and hasattr(record, "critic_justification")
+            ):
                 return f"Critic evaluation: Score={record.critic_score:.2f}, Justification='{record.critic_justification}'"
             elif event_type == "zork_response" and hasattr(record, "zork_response"):
                 return f"Zork response:\n{record.zork_response}"
-            elif event_type == "reward" and hasattr(record, "reward") and hasattr(record, "total_reward"):
+            elif (
+                event_type == "reward"
+                and hasattr(record, "reward")
+                and hasattr(record, "total_reward")
+            ):
                 return f"Turn reward: {record.reward:.2f}, Total episode reward: {record.total_reward:.2f}"
+            elif event_type == "agent_raw_response_debug" and hasattr(
+                record, "raw_response"
+            ):
+                return f"Agent raw response: {record.raw_response}"
+            elif event_type == "final_reasoning_debug" and hasattr(
+                record, "final_reasoning"
+            ):
+                return f"Final reasoning: {record.final_reasoning}"
+            elif event_type == "reasoning_extraction_debug" and hasattr(
+                record, "reasoning_extraction"
+            ):
+                return f"Reasoning extraction: {record.reasoning_extraction}"
+            elif event_type == "fallback_reasoning_debug" and hasattr(
+                record, "fallback_reasoning"
+            ):
+                return f"Fallback reasoning: {record.fallback_reasoning}"
+            elif event_type == "agent_llm_response" and hasattr(record, "llm_response"):
+                return f"Agent LLM response: {record.llm_response}"
             elif event_type == "extracted_info" and hasattr(record, "extracted_info"):
                 info = record.extracted_info
                 return (
@@ -66,7 +109,7 @@ class HumanReadableFormatter(logging.Formatter):
             prefix_parts.append(f"[{record.episode_id}]")
         if hasattr(record, "turn"):
             prefix_parts.append(f"Turn {record.turn}")
-        
+
         if prefix_parts:
             prefix = " ".join(prefix_parts) + ": "
             return f"{prefix}{message}"
@@ -124,10 +167,10 @@ def create_zork_logger(
 # Utility functions for parsing and rendering logs
 
 
-def parse_json_logs(json_log_file: str) -> List[Dict[str, Any]]:
+def parse_json_logs(json_log_file: str) -> list[dict[str, Any]]:
     """Parse a JSON log file into a list of log entries."""
     logs = []
-    with open(json_log_file, "r", encoding="utf-8") as f:
+    with open(json_log_file, encoding="utf-8") as f:
         for line in f:
             try:
                 logs.append(json.loads(line.strip()))
@@ -136,7 +179,7 @@ def parse_json_logs(json_log_file: str) -> List[Dict[str, Any]]:
     return logs
 
 
-def render_logs_as_text(logs: List[Dict[str, Any]]) -> str:
+def render_logs_as_text(logs: list[dict[str, Any]]) -> str:
     """Render JSON logs as human-readable text."""
     output = []
     for log in logs:
