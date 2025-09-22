@@ -71,6 +71,7 @@ Extract the following with equal attention to detail:
 3. **visible_characters**: Any creatures, people, or characters present
 4. **important_messages**: Key information from the game response (action results, alerts, descriptions)
 5. **in_combat**: Boolean indicating active combat or immediate threat
+6. **action_failure**: Boolean indicating that the message from the game indicates failed acrion - e.g. if the previous action indicates intention to move and the game does not move to new location or that game does not understand the command or the command has no effect.
 
 ### Combat State Persistence Rules
 Combat is a **persistent state** that continues across multiple turns until explicitly resolved. Follow these guidelines:
@@ -109,7 +110,7 @@ When location text is unclear, prioritize:
 
 ## OUTPUT FORMAT
 
-Provide a JSON object with exactly these fields:
+Provide a JSON object with exactly these fields; this is the only acceptable output format.:
 
 ```json
 {
@@ -118,7 +119,8 @@ Provide a JSON object with exactly these fields:
   "visible_objects": ["significant", "objects"],
   "visible_characters": ["any", "characters"],
   "important_messages": ["key", "messages", "from", "game"],
-  "in_combat": false
+  "in_combat": bool,
+  "action_failure": bool, 
 }
 ```
 
@@ -136,7 +138,8 @@ Output:
   "visible_objects": ["small mailbox", "white house", "boarded front door"],
   "visible_characters": [],
   "important_messages": ["You are in an open field west of a big white house with a boarded front door.", "There is a small mailbox here."],
-  "in_combat": false
+  "in_combat": false,
+  "action_failure": false 
 }
 ```
 
@@ -152,6 +155,7 @@ Output:
   "visible_characters": [],
   "important_messages": ["You are behind the white house.", "In one corner of the house there is a window which is slightly ajar.", "To the north is a path leading into the forest."],
   "in_combat": false
+  "action_failure": false, 
 }
 ```
 
@@ -166,7 +170,8 @@ Output:
   "visible_objects": [],
   "visible_characters": [],
   "important_messages": ["Taken."],
-  "in_combat": false
+  "in_combat": false,
+  "action_failure": bool, 
 }
 ```
 
@@ -181,7 +186,25 @@ Output:
   "visible_objects": ["wooden ladder", "small window", "loose floorboard", "garden"],
   "visible_characters": [],
   "important_messages": ["You are in a dusty attic.", "There is a wooden ladder leading down to the kitchen.", "A small window overlooks the garden to the east.", "In the corner, you notice a loose floorboard."],
-  "in_combat": false
+  "in_combat": false,
+  "action_failure": false, 
+}
+```
+
+
+**Example 4: Complex Exit Detection**
+```
+Input: >The way is blocked.
+
+Output:
+{
+  "current_location_name": "Unknown Location",
+  "exits": [],
+  "visible_objects": [],
+  "visible_characters": [],
+  "important_messages": ["The way is blocked."],
+  "in_combat": false,
+  "action_failure": true, 
 }
 ```
 

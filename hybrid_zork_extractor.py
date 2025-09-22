@@ -43,6 +43,7 @@ class ExtractorResponse(BaseModel):
     in_combat: bool
     score: int | None = None
     moves: int | None = None
+    action_failure: bool
 
 
 class HybridZorkExtractor:
@@ -169,7 +170,7 @@ Extract key information from the game text and return it as JSON with these fiel
 - in_combat: Boolean indicating combat status"""
 
     def extract_info(
-        self, game_text_from_zork: str, previous_location: str = None
+        self, game_text_from_zork: str, previous_location: str | None = None, previous_action: str | None = None
     ) -> ExtractorResponse | None:
         """
         Extract structured information from Zork game text using hybrid approach.
@@ -184,6 +185,7 @@ Extract key information from the game text and return it as JSON with these fiel
         try:
             # Get clean game text for LLM processing
             clean_game_text = self.get_clean_game_text(game_text_from_zork)
+
 
             # First, try structured parsing for key information
             structured_info = self._extract_structured_info(game_text_from_zork)
@@ -201,17 +203,21 @@ Extract key information from the game text and return it as JSON with these fiel
             # Use LLM for comprehensive extraction with structured info as context
             extraction_prompt = self._build_extraction_prompt(
                 clean_game_text,
-                previous_location,
+                "", #previous_location,
                 structured_info,
                 location_changed,
                 location_change_reason,
+                previous_action
             )
+
+           
 
             # Use proper system/user message structure
             messages = [
                 {"role": "system", "content": self.system_prompt},
                 {"role": "user", "content": extraction_prompt},
             ]
+
 
             # Log the full prompt for evaluation if enabled
             self._log_prompt_to_file(messages, "extractor")
@@ -226,6 +232,9 @@ Extract key information from the game text and return it as JSON with these fiel
                 min_p=self.min_p,
                 response_format=create_json_schema(ExtractorResponse),
             )
+
+            print(f"extractor: {llm_response=}")
+
 
             if not llm_response:
                 self.logger.warning(
@@ -243,10 +252,12 @@ Extract key information from the game text and return it as JSON with these fiel
                 else str(llm_response)
             )
 
+
             # Parse the LLM response
             parsed_response = self._parse_llm_response(
                 response_content, previous_location, structured_info
             )
+
 
             if parsed_response:
                 # Enhance with structured data where available
@@ -295,6 +306,7 @@ Extract key information from the game text and return it as JSON with these fiel
                 f"[{self.episode_id}] Extraction failed: {e}",
                 extra={"episode_id": self.episode_id},
             )
+
             # Pass structured_info to fallback even on exception
             structured_info = self._extract_structured_info(game_text_from_zork)
             fallback_response = self._create_fallback_response(
@@ -466,6 +478,7 @@ Respond only with the JSON, no other text."""
         structured_info: dict,
         location_changed: bool,
         location_change_reason: str,
+        previous_action: str | None,
     ) -> str:
         """Build the extraction prompt for the LLM."""
         prompt_parts = []
@@ -475,10 +488,10 @@ Respond only with the JSON, no other text."""
             prompt_parts.append(f"Previous Location: {previous_location}")
 
         # Add previous combat state context for persistence reasoning
-        if self.previous_location or self.previous_combat_state:
+        if self.previous_combat_state:
             prompt_parts.append(f"Previous Combat State: {self.previous_combat_state}")
-            if self.previous_location:
-                prompt_parts.append(f"Previous Turn Location: {self.previous_location}")
+        # if self.previous_location:
+        #     prompt_parts.append(f"Previous Turn Location: {self.previous_location}")
 
         # Add movement analysis context
         prompt_parts.append(f"Movement Analysis: {location_change_reason}")
@@ -497,6 +510,9 @@ Respond only with the JSON, no other text."""
         prompt_parts.append(
             "Please extract the key information from this game text and return it as JSON."
         )
+
+        if previous_action:
+            prompt_parts.append(f"Previous Action: {previous_action}")
 
         return "\n\n".join(prompt_parts)
 

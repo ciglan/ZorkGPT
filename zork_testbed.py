@@ -156,6 +156,9 @@ class ZorkTestbed:
         print("Starting Zork testbed...")
         print("Starting a new loop")
 
+        last_command = None
+        last_room = None
+
         with self.zork:
             # Start the game and switch to verbose mode for richer state
             current_state = self.zork.start()
@@ -164,26 +167,62 @@ class ZorkTestbed:
             self.current_score, self.max_score = self.zork.score(current_state)
 
             # Initial extraction of state
-            try:
-                extracted: ExtractorResponse | None = self.extractor.extract_info(
-                    current_state
-                )
-                if extracted:
-                    print(f"Initial location: {extracted.current_location_name}")
-                    if extracted.score is not None:
-                        self.current_score = extracted.score
-            except Exception:
-                extracted = None
+            # try:
+            #     extracted: ExtractorResponse | None = self.extractor.extract_info(
+            #         current_state
+            #     )
+            #     if extracted:
+            #         print(f"Initial location: {extracted.current_location_name}")
+            #         if extracted.score is not None:
+            #             self.current_score = extracted.score
+            # except Exception:
+            #     extracted = None
 
             for self.turn in range(1, self.max_turns + 1):
-                print(f"Turn {self.turn}\n{current_state}")
-                action, reasoning = self.get_action(current_state, self.history, self.turn
-                )
-                print(f"Reasoning: {reasoning}")
+
+                self.current_score, self.max_score = self.zork.score(current_state)
+
+                # Extract structured info each turn, fall back to raw scoring
+             
+                print(f"[Turn {self.turn}] score: {self.current_score}")
+                extraction = self.extractor.extract_info(current_state)
+                #TODO: store memory here. 
+
+
+                # self.extraction = extraction
+                if extraction:
+                    print(f"Extraction: {extraction.current_location_name}")
+                    self.turn_extracted = extraction
+
+                print(f"[Turn {self.turn}] {self.turn_extracted=}")
+                if self.turn_extracted:
+                    # # Prefer extractor score if available
+                    # if self.turn_extracted.score is not None:
+                    #     self.current_score = self.turn_extracted.score
+                    #     self.max_score = self.max_score or 585
+                    # Print a short structured snapshot for visibility
+                    loc = self.turn_extracted.current_location_name
+                    exits = (
+                        ", ".join(self.turn_extracted.exits)
+                        if self.turn_extracted.exits
+                        else "-"
+                    )
+
+                print(f"Turn {self.turn}\n{self.current_score}\n{current_state}")
+
+                # TODO wait for user input - add that imput to llm prompt
+                self.user_input = input("Message to llm: ")
+
+
+                action, reasoning = self.get_action(current_state, self.history, self.turn)
+                #print(f"Reasoning: {reasoning}")
+                last_command = action
                 print(f"Action: {action}")
                 next_state = self.zork.send_command(action)
                 print(f"Next state: {next_state}")
 
+
+                
                 # Check game over based on the response
                 self.game_over, self.reason = self.zork.is_game_over(next_state)
                 if self.game_over:
@@ -200,31 +239,14 @@ class ZorkTestbed:
                 # Track history and score; attempt to update score from the process
                 self.history.append((action, next_state))
 
-                # Extract structured info each turn, fall back to raw scoring
-             
-                print(f"[Turn {self.turn}] Extracting info")
-                self.turn_extracted = self.extractor.extract_info(next_state)
-                print(f"[Turn {self.turn}] {self.turn_extracted=}")
-                if self.turn_extracted:
-                    # Prefer extractor score if available
-                    if self.turn_extracted.score is not None:
-                        self.current_score = self.turn_extracted.score
-                        self.max_score = self.max_score or 585
-                    # Print a short structured snapshot for visibility
-                    loc = self.turn_extracted.current_location_name
-                    exits = (
-                        ", ".join(self.turn_extracted.exits)
-                        if self.turn_extracted.exits
-                        else "-"
-                    )
+                
 
                 current_state = next_state
 
-                if self.turn_delay_seconds > 0:
-                    time.sleep(self.turn_delay_seconds)
+                # if self.turn_delay_seconds > 0:
+                #     time.sleep(self.turn_delay_seconds)
 
-                # TODO wait for user input
-                self.user_input = input("Enter a command: ")
+                
 
             print("Max turns reached.")
             print(f"Final score: {self.current_score} / {self.max_score}")
