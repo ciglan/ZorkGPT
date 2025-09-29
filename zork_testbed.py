@@ -97,7 +97,9 @@ class SimpleAgent:
 
 
 class ZorkTestbed:
-    def __init__(self, max_turns: int = 6000, turn_delay_seconds: float = 0.25) -> None:
+    def __init__(self, max_turns: int = 6000, 
+        user_commands_enabled: bool = False,
+        turn_delay_seconds: float = 0.25) -> None:
         config = get_config()
 
         self.episode_log_file = config.files.episode_log_file
@@ -196,6 +198,7 @@ class ZorkTestbed:
 
         last_command = None
         last_room = None
+        expected_outcome = None
 
         with self.zork:
             # Start the game and switch to verbose mode for richer state
@@ -217,13 +220,32 @@ class ZorkTestbed:
                 extracted = None
 
             for self.turn in range(1, self.max_turns + 1):
-
-                self.current_score, self.max_score = self.zork.score()
-                print(f"Turn {self.turn} score: {self.current_score} \n{current_state}")
-                action, reasoning = self.get_action(current_state, self.history, self.turn
+                
+                extraction_response = self.extractor.extract_info(
+                    current_state, 
+                    previous_location = last_room, 
+                    previous_action = last_command,
+                    expected_outcome = expected_outcome
                 )
+
+
+                if extraction_response:
+                    if "Unknown Location" not in extraction_response.current_location_name:
+                        last_room = extraction_response.current_location_name
+                    print(f"Extraction response: {extraction_response}")
+
+
+                #self.current_score, self.max_score = self.zork.score()
+                print(f"Turn {self.turn} score: {self.current_score} \n{current_state}")
+
+                user_input = self.user_command_loop()
+
+                action, reasoning, expected_outcome = self.get_action(current_state, self.history, self.turn
+                , user_input)
                 print(f"Reasoning: {reasoning}")
                 print(f"\n\nAction: {action}\n\n")
+                print(f"Expected outcome: {expected_outcome}")
+
                 next_state = self.zork.send_command(action)
                 print(f"Next state: {next_state}")
 

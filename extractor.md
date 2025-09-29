@@ -71,7 +71,40 @@ Extract the following with equal attention to detail:
 3. **visible_characters**: Any creatures, people, or characters present
 4. **important_messages**: Key information from the game response (action results, alerts, descriptions)
 5. **in_combat**: Boolean indicating active combat or immediate threat
-6. **action_failure**: Boolean indicating that the message from the game indicates failed acrion - e.g. if the previous action indicates intention to move and the game does not move to new location or that game does not understand the command or the command has no effect.
+6. **action_failure_reason**: String explaining why the action failed (if action_failure is true) or why it succeeded (if action_failure is false). Should compare expected outcome with actual outcome when both are available. Use null if no previous action context is provided.
+7. **action_failure**: Boolean indicating that the previous action failed or did not achieve its intended outcome
+
+### Action Success Evaluation
+When both "Previous Action" and "Expected Outcome" are provided in the context, use them to determine the **action_failure** field:
+
+**Action Failed (action_failure = true) when:**
+- The game response contradicts the expected outcome
+- The game indicates it doesn't understand the command ("I don't know the word...", "I don't understand that...")
+- The intended action was blocked or prevented ("The way is blocked", "The door is locked", "You can't do that")
+- Object interactions that failed ("You don't have that", "There is no X here", "You can't see any such thing")
+- The response is a simple negative acknowledgment when success was expected
+- When the outcome is unexpected but not contradicting the expected outcome, it is NOT a failure. 
+- Some distinct, adjecent locations might have ths same name; E.g. 'Forest'. When moving, no change in location name dies not indicate the failure.
+
+**Action Succeeded (action_failure = false) when:**
+- The game response matches or is consistent with the expected outcome
+- The expected state change occurred (location changed, object taken, door opened, etc.)
+- The game provides positive acknowledgment consistent with expectations ("Taken.", "Opened.", "Done.")
+- The expected information was revealed or expected result achieved
+
+**If Expected Outcome is not provided:**
+- Fall back to detecting obvious failure indicators in the game text
+- Use context from previous action to infer intent and evaluate success
+
+**Action Failure Reason Guidelines:**
+- Be concise but specific (1-2 sentences)
+- When expected outcome is available, explicitly compare it with what actually happened
+- Focus on the key reason for success or failure
+- Examples:
+  - "Expected to move north but the way was blocked"
+  - "Successfully took the lamp as expected; item added to inventory"
+  - "Game did not understand the command 'frobnicate'"
+  - "Expected to open mailbox but it was already open"
 
 ### Combat State Persistence Rules
 Combat is a **persistent state** that continues across multiple turns until explicitly resolved. Follow these guidelines:
@@ -120,7 +153,8 @@ Provide a JSON object with exactly these fields; this is the only acceptable out
   "visible_characters": ["any", "characters"],
   "important_messages": ["key", "messages", "from", "game"],
   "in_combat": bool,
-  "action_failure": bool, 
+  "action_failure_reason": "Explanation of why action succeeded or failed, or null if no action context"
+  "action_failure": bool,
 }
 ```
 
@@ -130,6 +164,8 @@ Provide a JSON object with exactly these fields; this is the only acceptable out
 ```
 Input: >You are in an open field west of a big white house with a boarded front door.
 There is a small mailbox here.
+Previous Action: look
+Expected Outcome: I receive a detailed description of my current location and surroundings.
 
 Output:
 {
@@ -139,13 +175,16 @@ Output:
   "visible_characters": [],
   "important_messages": ["You are in an open field west of a big white house with a boarded front door.", "There is a small mailbox here."],
   "in_combat": false,
-  "action_failure": false 
+  "action_failure_reason": "Successfully received detailed location description as expected",
+  "action_failure": false
 }
 ```
 
 **Example 2: Location with Multiple Exit Types**
 ```
 Input: >You are behind the white house. In one corner of the house there is a window which is slightly ajar. To the north is a path leading into the forest.
+Previous Action: south
+Expected Outcome: I move to the room south of here and receive its full description.
 
 Output:
 {
@@ -154,14 +193,17 @@ Output:
   "visible_objects": ["white house", "window", "path"],
   "visible_characters": [],
   "important_messages": ["You are behind the white house.", "In one corner of the house there is a window which is slightly ajar.", "To the north is a path leading into the forest."],
-  "in_combat": false
-  "action_failure": false, 
+  "in_combat": false,
+  "action_failure_reason": "Successfully moved south to Behind White House as expected",
+  "action_failure": false
 }
 ```
 
 **Example 3: Action Result (No Location Change)**
 ```
 Input: >Taken.
+Previous Action: take mailbox
+Expected Outcome: The mailbox is added to my inventory.
 
 Output:
 {
@@ -171,13 +213,16 @@ Output:
   "visible_characters": [],
   "important_messages": ["Taken."],
   "in_combat": false,
-  "action_failure": bool, 
+  "action_failure_reason": "Successfully took mailbox as expected; item added to inventory",
+  "action_failure": false
 }
 ```
 
 **Example 4: Complex Exit Detection**
 ```
 Input: >You are in a dusty attic. There is a wooden ladder leading down to the kitchen. A small window overlooks the garden to the east. In the corner, you notice a loose floorboard.
+Previous Action: up
+Expected Outcome: I move up and receive a description of the room above.
 
 Output:
 {
@@ -187,14 +232,17 @@ Output:
   "visible_characters": [],
   "important_messages": ["You are in a dusty attic.", "There is a wooden ladder leading down to the kitchen.", "A small window overlooks the garden to the east.", "In the corner, you notice a loose floorboard."],
   "in_combat": false,
-  "action_failure": false, 
+  "action_failure_reason": "Successfully moved up to Attic as expected; received full room description",
+  "action_failure": false
 }
 ```
 
 
-**Example 4: Complex Exit Detection**
+**Example 5: Action Failure Detection**
 ```
 Input: >The way is blocked.
+Previous Action: north
+Expected Outcome: I move to the room north of here and receive its full description.
 
 Output:
 {
@@ -204,7 +252,46 @@ Output:
   "visible_characters": [],
   "important_messages": ["The way is blocked."],
   "in_combat": false,
-  "action_failure": true, 
+  "action_failure_reason": "Expected to move north but the way was blocked",
+  "action_failure": true
+}
+```
+
+**Example 6: Action Success Detection**
+```
+Input: >Taken.
+Previous Action: take lamp
+Expected Outcome: The lamp is added to my inventory.
+
+Output:
+{
+  "current_location_name": "Unknown Location",
+  "exits": [],
+  "visible_objects": [],
+  "visible_characters": [],
+  "important_messages": ["Taken."],
+  "in_combat": false,
+  "action_failure_reason": "Successfully took the lamp as expected; item added to inventory",
+  "action_failure": false
+}
+```
+
+**Example 7: Action Failure - Unexpected Result**
+```
+Input: >You don't have that.
+Previous Action: drop sword
+Expected Outcome: The sword is removed from my inventory and left in the current location.
+
+Output:
+{
+  "current_location_name": "Unknown Location",
+  "exits": [],
+  "visible_objects": [],
+  "visible_characters": [],
+  "important_messages": ["You don't have that."],
+  "in_combat": false,
+  "action_failure_reason": "Expected to drop sword but it's not in inventory; action cannot be performed",
+  "action_failure": true
 }
 ```
 

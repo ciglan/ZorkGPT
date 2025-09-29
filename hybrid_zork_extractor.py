@@ -44,6 +44,7 @@ class ExtractorResponse(BaseModel):
     score: int | None = None
     moves: int | None = None
     action_failure: bool
+    action_failure_reason: str | None = None
 
 
 class HybridZorkExtractor:
@@ -170,7 +171,11 @@ Extract key information from the game text and return it as JSON with these fiel
 - in_combat: Boolean indicating combat status"""
 
     def extract_info(
-        self, game_text_from_zork: str, previous_location: str | None = None, previous_action: str | None = None
+        self, 
+        game_text_from_zork: str, 
+        previous_location: str | None = None, 
+        previous_action: str | None = None,
+        expected_outcome: str | None = None
     ) -> ExtractorResponse | None:
         """
         Extract structured information from Zork game text using hybrid approach.
@@ -207,7 +212,8 @@ Extract key information from the game text and return it as JSON with these fiel
                 structured_info,
                 location_changed,
                 location_change_reason,
-                previous_action
+                previous_action,
+                expected_outcome
             )
 
            
@@ -232,9 +238,6 @@ Extract key information from the game text and return it as JSON with these fiel
                 min_p=self.min_p,
                 response_format=create_json_schema(ExtractorResponse),
             )
-
-            print(f"extractor: {llm_response=}")
-
 
             if not llm_response:
                 self.logger.warning(
@@ -479,6 +482,7 @@ Respond only with the JSON, no other text."""
         location_changed: bool,
         location_change_reason: str,
         previous_action: str | None,
+        expected_outcome: str | None,
     ) -> str:
         """Build the extraction prompt for the LLM."""
         prompt_parts = []
@@ -506,13 +510,24 @@ Respond only with the JSON, no other text."""
         # Add the game text
         prompt_parts.append(f"Game Text:\n```\n{game_text}\n```")
 
-        # Simple instruction - let the system prompt handle the details
-        prompt_parts.append(
-            "Please extract the key information from this game text and return it as JSON."
-        )
-
+        # Add previous action and expected outcome context for action success evaluation
         if previous_action:
             prompt_parts.append(f"Previous Action: {previous_action}")
+        
+        if expected_outcome:
+            prompt_parts.append(f"Expected Outcome: {expected_outcome}")
+
+        # Simple instruction - let the system prompt handle the details
+        if previous_action or expected_outcome:
+            prompt_parts.append(
+                "Please extract the key information from this game text and return it as JSON. Compare the game response with the expected outcome to determine if the action succeeded (action_failure field), and provide a clear explanation in action_failure_reason."
+            )
+        else:
+            prompt_parts.append(
+                "Please extract the key information from this game text and return it as JSON."
+            )
+
+
 
         return "\n\n".join(prompt_parts)
 
@@ -806,6 +821,8 @@ Respond only with the JSON, no other text."""
             in_combat=fallback_combat_state,
             score=structured_info.get("score"),
             moves=structured_info.get("moves"),
+            action_failure=False,
+            action_failure_reason="Extraction failed; cannot determine action success",
         )
 
     def update_episode_id(self, episode_id: str) -> None:
