@@ -758,6 +758,7 @@ class ZorkSimpleOrchestrator:
         )
         agent_action = agent_response["action"]
         agent_reasoning = agent_response["reasoning"]
+        agent_expected_outcome = agent_response.get("expected_outcome", None)
 
         current_exits = []
         if self.memory_log_history:
@@ -877,6 +878,7 @@ class ZorkSimpleOrchestrator:
             )
             agent_action = agent_response["action"]
             agent_reasoning = agent_response["reasoning"]
+            agent_expected_outcome = agent_response.get("expected_outcome", None)
 
             critic_response = self.critic.get_robust_evaluation(
                 game_state_text=current_game_state,

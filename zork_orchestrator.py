@@ -616,6 +616,7 @@ class ZorkOrchestrator:
             )
             agent_action = agent_response["action"]
             agent_reasoning = agent_response["reasoning"]
+            agent_expected_outcome = agent_response.get("expected_outcome", None)
 
             # Get critic evaluation
             # Get available exits from most recent extraction for spatial awareness
@@ -750,6 +751,7 @@ class ZorkOrchestrator:
                 )
                 agent_action = agent_response["action"]
                 agent_reasoning = agent_response["reasoning"]
+                agent_expected_outcome = agent_response.get("expected_outcome", None)
 
                 # Re-evaluate new action
                 critic_response = self.critic.get_robust_evaluation(

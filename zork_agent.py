@@ -209,14 +209,14 @@ The following strategic guide has been compiled from analyzing previous episodes
                 memory_context += f"Command: {action}\nResult: {response.strip()}\n\n"
 
             # Include information about repetitive actions
-            if action_counts:
-                repeated_actions = [
-                    act for act, count in action_counts.items() if count > 2
-                ]
-                if repeated_actions:
-                    memory_context += "\n**CRITICAL WARNING**: You've tried these actions multiple times with limited success: "
-                    memory_context += ", ".join(repeated_actions)
-                    memory_context += ". According to your instructions, you must AVOID repeating failed actions and try completely different approaches.\n"
+            # if action_counts:
+            #     repeated_actions = [
+            #         act for act, count in action_counts.items() if count > 2
+            #     ]
+            #     if repeated_actions:
+            #         memory_context += "\n**CRITICAL WARNING**: You've tried these actions multiple times with limited success: "
+            #         memory_context += ", ".join(repeated_actions)
+            #         memory_context += ". According to your instructions, you must AVOID repeating failed actions and try completely different approaches.\n"
 
             if "o1" in self.model:
                 # o1 models use user role for all messages
@@ -230,6 +230,8 @@ The following strategic guide has been compiled from analyzing previous episodes
             user_content = f"{user_content}\n\n{relevant_memories}"
 
         messages.append({"role": "user", "content": user_content})
+
+        raise ValueError(messages)
 
         try:
             llm_response = self.client.chat.completions.create(
@@ -294,6 +296,7 @@ The following strategic guide has been compiled from analyzing previous episodes
         previous_actions_and_responses: list[tuple[str, str]] | None = None,
         action_counts: Counter | None = None,
         relevant_memories: str | None = None,
+        user_input: str | None = None,
     ) -> dict[str, str]:
         """
         Gets an action from the Agent LM with reasoning preserved.
@@ -318,7 +321,7 @@ The following strategic guide has been compiled from analyzing previous episodes
             memory_context = "Here's what you've done so far:\n"
 
             # Add the most recent actions and responses (last 5-8 is usually sufficient)
-            for i, (action, response) in enumerate(previous_actions_and_responses[-8:]):
+            for i, (action, response) in enumerate(previous_actions_and_responses):
                 memory_context += f"Command: {action}\nResult: {response.strip()}\n\n"
 
             # Include information about repetitive actions
@@ -340,7 +343,10 @@ The following strategic guide has been compiled from analyzing previous episodes
         # Combine game state with relevant memories if available
         user_content = game_state_text
         if relevant_memories:
-            user_content = f"{user_content}\n\n{relevant_memories}"
+            user_content += f"\n\n{relevant_memories}"
+
+        if user_input:
+            user_content += f"\n\nYour hear a voice in your head saying: {user_input}"
 
         messages.append({"role": "user", "content": user_content})
 
@@ -396,6 +402,14 @@ The following strategic guide has been compiled from analyzing previous episodes
             )
             reasoning_parts.extend(reflection_matches)
 
+            # Extract <expected_outcome> tags
+            expected_outcome_matches = re.findall(
+                r"<expected_outcome>(.*?)</expected_outcome>", raw_response, flags=re.DOTALL
+            )
+            expected_outcome = "\n\n".join(
+                match.strip() for match in expected_outcome_matches if match.strip()
+            ) if expected_outcome_matches else None
+
             # DEBUG: Log what reasoning parts were extracted
             if self.logger:
                 self.logger.info(
@@ -406,10 +420,12 @@ The following strategic guide has been compiled from analyzing previous episodes
                         "think_matches_count": len(think_matches),
                         "thinking_matches_count": len(thinking_matches),
                         "reflection_matches_count": len(reflection_matches),
+                        "expected_outcome_matches_count": len(expected_outcome_matches),
                         "total_reasoning_parts": len(reasoning_parts),
                         "think_matches": think_matches,
                         "thinking_matches": thinking_matches,
                         "reflection_matches": reflection_matches,
+                        "expected_outcome_matches": expected_outcome_matches,
                     },
                 )
 
@@ -500,11 +516,14 @@ The following strategic guide has been compiled from analyzing previous episodes
                     },
                 )
 
-            # Clean up the action: remove any thinking
+            # Clean up the action: remove any thinking and expected_outcome tags
             action = re.sub(r"<think>.*?</think>\s*", "", raw_response, flags=re.DOTALL)
             action = re.sub(r"<thinking>.*?</thinking>\s*", "", action, flags=re.DOTALL)
             action = re.sub(
                 r"<reflection>.*?</reflection>\s*", "", action, flags=re.DOTALL
+            )
+            action = re.sub(
+                r"<expected_outcome>.*?</expected_outcome>\s*", "", action, flags=re.DOTALL
             )
 
             # Remove any remaining markup tags (like <s>, </s>, etc.)
@@ -535,6 +554,7 @@ The following strategic guide has been compiled from analyzing previous episodes
             return {
                 "action": action,
                 "reasoning": reasoning if reasoning else None,
+                "expected_outcome": expected_outcome,
                 "raw_response": raw_response,
             }
         except Exception as e:
@@ -546,6 +566,7 @@ The following strategic guide has been compiled from analyzing previous episodes
             return {
                 "action": "look",
                 "reasoning": None,
+                "expected_outcome": None,
                 "raw_response": None,
             }  # Default safe action on error
 

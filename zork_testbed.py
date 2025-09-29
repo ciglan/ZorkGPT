@@ -143,23 +143,47 @@ class ZorkTestbed:
         self.turn_extracted_score = 0
         self.turn_extracted_max_score = 0
         self.action_counts = Counter()
+        self.user_commands_enabled = user_commands_enabled
 
 
-    def get_action(self, current_game_state: str, history: list[tuple[str, str]], turn: int) -> tuple[str, str]:
-        # Get agent action with reasoning
+    def get_action(self, current_game_state: str, history: list[tuple[str, str]], turn: int, user_input) -> tuple[str, str, str]:
+        # Get agent action with reasoning and expected outcome
             agent_response = self.agent.get_action_with_reasoning(
                 game_state_text=current_game_state,
                 previous_actions_and_responses=self.history[
-                    -42:
-                ],  # Last 42 actions
+                    -200:
+                ],  # Last 200 actions
                 action_counts=self.action_counts,
                 relevant_memories=None,
+                user_input = user_input
             )
 
             agent_action = agent_response["action"]
             agent_reasoning = agent_response["reasoning"]
+            agent_expected_outcome = agent_response.get("expected_outcome", None)
             self.action_counts[agent_action] += 1
-            return agent_action, agent_reasoning
+            return agent_action, agent_reasoning, agent_expected_outcome
+
+    def user_command_loop(self):
+        if not self.user_commands_enabled:
+            return None
+        user_input = input("Message to llm or cmd:command: ")
+        while user_input.startswith("cmd:"):
+            #parse and execute command
+            user_input = user_input.replace("cmd:", "")
+            if user_input.startswith("save"):
+                next_state=self.zork.send_interactive_command("save", user_input.replace("save ", ""), "Please enter a filename", "Ok.")
+            elif user_input.startswith("restore"):
+                next_state=self.zork.send_interactive_command("restore", user_input.replace("restore ", ""), "Please enter a filename", "Ok.")
+            else:
+                next_state=next_state = self.zork.send_command(user_input)
+            
+            print(f"Next state after USER COMMAND: {next_state}")
+            # read next input
+            user_input = input("\nMessage to llm or cmd:command: ")
+        return user_input
+
+
 
     def run(self) -> int:
         """Run a minimal gameplay loop.
@@ -169,6 +193,9 @@ class ZorkTestbed:
         """
         print("Starting Zork testbed...")
         print("Starting a new loop")
+
+        last_command = None
+        last_room = None
 
         with self.zork:
             # Start the game and switch to verbose mode for richer state
@@ -216,23 +243,7 @@ class ZorkTestbed:
                 # Track history and score; attempt to update score from the process
                 self.history.append((action, next_state))
 
-                # Extract structured info each turn, fall back to raw scoring
-             
-                # print(f"[Turn {self.turn}] Extracting info")
-                # self.turn_extracted = self.extractor.extract_info(next_state)
-                # print(f"[Turn {self.turn}] {self.turn_extracted=}")
-                # if self.turn_extracted:
-                #     # Prefer extractor score if available
-                #     if self.turn_extracted.score is not None:
-                #         self.current_score = self.turn_extracted.score
-                #         self.max_score = self.max_score or 585
-                #     # Print a short structured snapshot for visibility
-                #     loc = self.turn_extracted.current_location_name
-                #     exits = (
-                #         ", ".join(self.turn_extracted.exits)
-                #         if self.turn_extracted.exits
-                #         else "-"
-                #     )
+                
 
                 current_state = next_state
 
@@ -248,5 +259,5 @@ class ZorkTestbed:
 
 
 if __name__ == "__main__":
-    testbed = ZorkTestbed()
+    testbed = ZorkTestbed(user_commands_enabled=True)
     testbed.run()

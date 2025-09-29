@@ -113,7 +113,7 @@ class GameplayConfig(BaseModel):
 class LoggingConfig(BaseModel):
     """Logging configuration settings."""
 
-    enable_prompt_logging: bool = False
+    enable_prompt_logging: bool = True
 
 
 class OrchestratorConfig(BaseModel):
