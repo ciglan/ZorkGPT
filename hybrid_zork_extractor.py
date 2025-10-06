@@ -10,6 +10,7 @@ structured data that's now available.
 """
 
 import json
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -43,8 +44,8 @@ class ExtractorResponse(BaseModel):
     in_combat: bool
     score: int | None = None
     moves: int | None = None
-    action_failure: bool
-    action_failure_reason: str | None = None
+    action_status: Literal["success", "failure", "neutral", "unexpected_outcome"]
+    action_status_reason: str | None = None
 
 
 class HybridZorkExtractor:
@@ -520,7 +521,7 @@ Respond only with the JSON, no other text."""
         # Simple instruction - let the system prompt handle the details
         if previous_action or expected_outcome:
             prompt_parts.append(
-                "Please extract the key information from this game text and return it as JSON. Compare the game response with the expected outcome to determine if the action succeeded (action_failure field), and provide a clear explanation in action_failure_reason."
+                "Please extract the key information from this game text and return it as JSON. Compare the game response with the expected outcome to determine the action status (action_status field: success/failure/neutral/unexpected_outcome), and provide a clear explanation in action_status_reason."
             )
         else:
             prompt_parts.append(
@@ -821,8 +822,8 @@ Respond only with the JSON, no other text."""
             in_combat=fallback_combat_state,
             score=structured_info.get("score"),
             moves=structured_info.get("moves"),
-            action_failure=False,
-            action_failure_reason="Extraction failed; cannot determine action success",
+            action_status="neutral",
+            action_status_reason="Extraction failed; cannot determine action outcome",
         )
 
     def update_episode_id(self, episode_id: str) -> None:

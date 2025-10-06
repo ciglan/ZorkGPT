@@ -29,23 +29,24 @@ dev = [
 
 [tool.zorkgpt.llm]
 # LLM Configuration
-## client_base_url = "https://openrouter.ai/api/v1"
-## agent_model = "qwen/qwen3-235b-a22b"
-## info_ext_model = "gemma-3-12b-it-qat"
-### info_ext_model = "google/gemma-3-12b-it"
-##critic_model = "gemma-3-12b-it-qat"
-### critic_model = "google/gemma-3-12b-it"
-###analysis_model = "meta-llama/llama-4-scout"
+client_base_url = "https://openrouter.ai/api/v1"
+agent_model = "x-ai/grok-4-fast"
+info_ext_model = "google/gemma-3-12b-it"
+#"qwen/qwen3-14b:free" 
+#"mistralai/mistral-small-3.2-24b-instruct:free"
+##critic_model = "x-ai/grok-4-fast:free"
+analysis_model = "x-ai/grok-4-fast"
 
 
-# LLM Configuration
-client_base_url = "http://localhost:11434/v1"
-agent_model = "qwen3:14b"
-info_ext_model = "qwen3:14b"
-# info_ext_model = "google/gemma-3-12b-it"
-critic_model = "qwen3:14b"
-# critic_model = "google/gemma-3-12b-it"
-analysis_model = "qwen3:14b"
+
+## LLM Configuration
+#client_base_url = "http://localhost:11434/v1"
+#agent_model = "qwen3:14b"
+#info_ext_model = "qwen3:14b"
+## info_ext_model = "google/gemma-3-12b-it"
+#critic_model = "qwen3:14b"
+## critic_model = "google/gemma-3-12b-it"
+#analysis_model = "qwen3:14b"
 
 # Per-model base URLs (optional, for cost optimization)
 # If not specified, will fall back to client_base_url
@@ -123,7 +124,7 @@ save_signal_filename = ".SAVE_REQUESTED_BY_SYSTEM"
 
 [tool.zorkgpt.logging]
 # Logging Configuration
-enable_prompt_logging = false
+enable_prompt_logging = true
 
 [tool.zorkgpt.orchestrator]
 # Orchestrator Configuration

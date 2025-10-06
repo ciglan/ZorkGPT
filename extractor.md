@@ -71,40 +71,54 @@ Extract the following with equal attention to detail:
 3. **visible_characters**: Any creatures, people, or characters present
 4. **important_messages**: Key information from the game response (action results, alerts, descriptions)
 5. **in_combat**: Boolean indicating active combat or immediate threat
-6. **action_failure_reason**: String explaining why the action failed (if action_failure is true) or why it succeeded (if action_failure is false). Should compare expected outcome with actual outcome when both are available. Use null if no previous action context is provided.
-7. **action_failure**: Boolean indicating that the previous action failed or did not achieve its intended outcome
+6. **action_status_reason**: String explaining the outcome of the previous action. Should compare expected outcome with actual outcome when both are available. Use null if no previous action context is provided.
+7. **action_status**: Enum describing the outcome of the previous action: "success" (action achieved intended result), "failure" (action was blocked or failed), "neutral" (no significant outcome or informational response), or "unexpected_outcome" (action succeeded but in an unexpected way or had surprising results)
 
-### Action Success Evaluation
-When both "Previous Action" and "Expected Outcome" are provided in the context, use them to determine the **action_failure** field:
+### Action Outcome Evaluation
+When both "Previous Action" and "Expected Outcome" are provided in the context, use them to determine the **action_status** field:
 
-**Action Failed (action_failure = true) when:**
+**Success (action_status = "success"):**
+- The game response matches or is consistent with the expected outcome
+- The expected state change occurred (location changed, object taken, door opened, etc.)
+- The game provides positive acknowledgment consistent with expectations ("Taken.", "Opened.", "Done.")
+- The expected information was revealed or expected result achieved
+- Movement to a new location as intended (note: some distinct adjacent locations might have the same name, e.g., 'Forest')
+
+**Failure (action_status = "failure"):**
 - The game response contradicts the expected outcome
 - The game indicates it doesn't understand the command ("I don't know the word...", "I don't understand that...")
 - The intended action was blocked or prevented ("The way is blocked", "The door is locked", "You can't do that")
 - Object interactions that failed ("You don't have that", "There is no X here", "You can't see any such thing")
 - The response is a simple negative acknowledgment when success was expected
-- When the outcome is unexpected but not contradicting the expected outcome, it is NOT a failure. 
-- Some distinct, adjecent locations might have ths same name; E.g. 'Forest'. When moving, no change in location name dies not indicate the failure.
 
-**Action Succeeded (action_failure = false) when:**
-- The game response matches or is consistent with the expected outcome
-- The expected state change occurred (location changed, object taken, door opened, etc.)
-- The game provides positive acknowledgment consistent with expectations ("Taken.", "Opened.", "Done.")
-- The expected information was revealed or expected result achieved
+**Neutral (action_status = "neutral"):**
+- Informational actions that provide information without state change (e.g., "look", "examine")
+- Actions that completed but had no significant game impact
+- Repetitive actions with no new outcome
+- No previous action context is provided
+
+**Unexpected Outcome (action_status = "unexpected_outcome"):**
+- Action succeeded but in a way different from what was expected
+- Unexpected side effects or consequences occurred
+- The outcome contradicts expectations but isn't a failure (e.g., expected to find an item but discovered a secret passage instead)
+- Surprising but positive results
 
 **If Expected Outcome is not provided:**
-- Fall back to detecting obvious failure indicators in the game text
-- Use context from previous action to infer intent and evaluate success
+- Default to "neutral" for informational actions (look, examine, inventory)
+- Use context from previous action and game response to infer the most appropriate status
+- Look for obvious success or failure indicators in the game text
 
-**Action Failure Reason Guidelines:**
+**Action Status Reason Guidelines:**
 - Be concise but specific (1-2 sentences)
 - When expected outcome is available, explicitly compare it with what actually happened
-- Focus on the key reason for success or failure
+- Focus on the key reason for the status classification
 - Examples:
-  - "Expected to move north but the way was blocked"
-  - "Successfully took the lamp as expected; item added to inventory"
-  - "Game did not understand the command 'frobnicate'"
-  - "Expected to open mailbox but it was already open"
+  - "Expected to move north but the way was blocked" (failure)
+  - "Successfully took the lamp as expected; item added to inventory" (success)
+  - "Game did not understand the command 'frobnicate'" (failure)
+  - "Expected to open mailbox but it was already open; received description instead" (unexpected_outcome)
+  - "Provided detailed description of current location as expected" (success)
+  - "Examined the mailbox; no state change, purely informational" (neutral)
 
 ### Combat State Persistence Rules
 Combat is a **persistent state** that continues across multiple turns until explicitly resolved. Follow these guidelines:
@@ -153,8 +167,8 @@ Provide a JSON object with exactly these fields; this is the only acceptable out
   "visible_characters": ["any", "characters"],
   "important_messages": ["key", "messages", "from", "game"],
   "in_combat": bool,
-  "action_failure_reason": "Explanation of why action succeeded or failed, or null if no action context"
-  "action_failure": bool,
+  "action_status_reason": "Explanation of action outcome, or null if no action context",
+  "action_status": "success" | "failure" | "neutral" | "unexpected_outcome"
 }
 ```
 
@@ -175,8 +189,8 @@ Output:
   "visible_characters": [],
   "important_messages": ["You are in an open field west of a big white house with a boarded front door.", "There is a small mailbox here."],
   "in_combat": false,
-  "action_failure_reason": "Successfully received detailed location description as expected",
-  "action_failure": false
+  "action_status_reason": "Successfully received detailed location description as expected",
+  "action_status": "success"
 }
 ```
 
@@ -194,8 +208,8 @@ Output:
   "visible_characters": [],
   "important_messages": ["You are behind the white house.", "In one corner of the house there is a window which is slightly ajar.", "To the north is a path leading into the forest."],
   "in_combat": false,
-  "action_failure_reason": "Successfully moved south to Behind White House as expected",
-  "action_failure": false
+  "action_status_reason": "Successfully moved south to Behind White House as expected",
+  "action_status": "success"
 }
 ```
 
@@ -213,8 +227,8 @@ Output:
   "visible_characters": [],
   "important_messages": ["Taken."],
   "in_combat": false,
-  "action_failure_reason": "Successfully took mailbox as expected; item added to inventory",
-  "action_failure": false
+  "action_status_reason": "Successfully took mailbox as expected; item added to inventory",
+  "action_status": "success"
 }
 ```
 
@@ -232,8 +246,8 @@ Output:
   "visible_characters": [],
   "important_messages": ["You are in a dusty attic.", "There is a wooden ladder leading down to the kitchen.", "A small window overlooks the garden to the east.", "In the corner, you notice a loose floorboard."],
   "in_combat": false,
-  "action_failure_reason": "Successfully moved up to Attic as expected; received full room description",
-  "action_failure": false
+  "action_status_reason": "Successfully moved up to Attic as expected; received full room description",
+  "action_status": "success"
 }
 ```
 
@@ -252,8 +266,8 @@ Output:
   "visible_characters": [],
   "important_messages": ["The way is blocked."],
   "in_combat": false,
-  "action_failure_reason": "Expected to move north but the way was blocked",
-  "action_failure": true
+  "action_status_reason": "Expected to move north but the way was blocked",
+  "action_status": "failure"
 }
 ```
 
@@ -271,8 +285,8 @@ Output:
   "visible_characters": [],
   "important_messages": ["Taken."],
   "in_combat": false,
-  "action_failure_reason": "Successfully took the lamp as expected; item added to inventory",
-  "action_failure": false
+  "action_status_reason": "Successfully took the lamp as expected; item added to inventory",
+  "action_status": "success"
 }
 ```
 
@@ -290,8 +304,8 @@ Output:
   "visible_characters": [],
   "important_messages": ["You don't have that."],
   "in_combat": false,
-  "action_failure_reason": "Expected to drop sword but it's not in inventory; action cannot be performed",
-  "action_failure": true
+  "action_status_reason": "Expected to drop sword but it's not in inventory; action cannot be performed",
+  "action_status": "failure"
 }
 ```
 

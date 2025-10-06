@@ -1,0 +1,402 @@
+[
+  {
+    "action_pattern": "take egg then examine egg",
+    "context": "Tree Branches (bird's nest on branch)",
+    "outcome": "Acquired jeweled egg and revealed it as closed, gaining initial treasure points",
+    "score_gain": 5,
+    "category": "treasure_examination",
+    "location": null,
+    "prerequisites": [
+      "Nest must be accessible via climbing tree from Forest Path; no other prerequisites.",
+      "Nest must be accessible via climbing tree; no prerequisites beyond reaching location",
+      "Nest must be accessible via climb tree"
+    ],
+    "times_confirmed": 3
+  },
+  {
+    "action_pattern": "move leaves",
+    "context": "Clearing",
+    "outcome": "Revealed hidden grating beneath",
+    "score_gain": 0,
+    "category": "environmental_reveal",
+    "location": null,
+    "prerequisites": [
+      "None (direct action on pile in open area)"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "open grating",
+    "context": "Clearing",
+    "outcome": "Confirmed grating is locked, indicating need for key/tool",
+    "score_gain": 0,
+    "category": "access_block",
+    "location": null,
+    "prerequisites": [
+      "Grating must be visible (e.g.",
+      "via moving leaves)"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "take sack",
+    "context": "Kitchen",
+    "outcome": "Acquired item and immediate score boost",
+    "score_gain": 10,
+    "category": "treasure_collection",
+    "location": null,
+    "prerequisites": [
+      "None (available on table)",
+      "None",
+      "Table in kitchen must be present"
+    ],
+    "times_confirmed": 4
+  },
+  {
+    "action_pattern": "take bottle",
+    "context": "Kitchen",
+    "outcome": "Acquired item but no score",
+    "score_gain": 0,
+    "category": "item_collection",
+    "location": null,
+    "prerequisites": [
+      "None (available on table); follow with examine or open for potential utility",
+      "Sack must be opened"
+    ],
+    "times_confirmed": 2
+  },
+  {
+    "action_pattern": "open window then enter window",
+    "context": "Behind House",
+    "outcome": "Gained access to interior kitchen area",
+    "score_gain": 0,
+    "category": "access_unlock",
+    "location": null,
+    "prerequisites": [
+      "Window must be ajar initially",
+      "Window must be slightly ajar initially"
+    ],
+    "times_confirmed": 4
+  },
+  {
+    "action_pattern": "move rug then open trap door",
+    "context": "Living Room",
+    "outcome": "Revealed and accessed cellar staircase",
+    "score_gain": 0,
+    "category": "environmental_reveal",
+    "location": null,
+    "prerequisites": [
+      "Rug must be present and movable",
+      "Rug must be movable (great effort noted)"
+    ],
+    "times_confirmed": 2
+  },
+  {
+    "action_pattern": "take sword then turn on lantern",
+    "context": "Living Room",
+    "outcome": "Prepared for dark descent (sword for combat, lantern for visibility)",
+    "score_gain": 0,
+    "category": "item_collection",
+    "location": null,
+    "prerequisites": [
+      "Lantern must be taken first"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "down from trap door",
+    "context": "Living Room to Cellar",
+    "outcome": "Accessed underground but triggered bar shut (access now one-way)",
+    "score_gain": 0,
+    "category": "access_block",
+    "location": null,
+    "prerequisites": [
+      "Trap door must be open; lantern on recommended"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "south from cellar",
+    "context": "Cellar to East of Chasm",
+    "outcome": "Unlocked chasm area with major progress",
+    "score_gain": 25,
+    "category": "area_unlock",
+    "location": null,
+    "prerequisites": [
+      "Lantern on; sword may glow as warning",
+      "Lantern must be on; trap door accessed via rug in Living Room"
+    ],
+    "times_confirmed": 2
+  },
+  {
+    "action_pattern": "take painting",
+    "context": "Gallery",
+    "outcome": "Secured remaining art treasure",
+    "score_gain": 4,
+    "category": "treasure_collection",
+    "location": null,
+    "prerequisites": [
+      "Painting must be visible (last one left)",
+      "Inventory space must be available (dropped sack prerequisite)",
+      "Inventory space must be freed (e.g.",
+      "by dropping sack); no prerequisites beyond being in Studio."
+    ],
+    "times_confirmed": 3
+  },
+  {
+    "action_pattern": "move leaves then open grating",
+    "context": "Clearing",
+    "outcome": "Revealed locked underground grating after leaf disturbance",
+    "score_gain": 0,
+    "category": "environmental_reveal",
+    "location": null,
+    "prerequisites": [
+      "Leaves pile must be on ground in clearing"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "open sack",
+    "context": "Kitchen",
+    "outcome": "Revealed contents for further taking",
+    "score_gain": 0,
+    "category": "item_reveal",
+    "location": null,
+    "prerequisites": [
+      "Sack must be taken first"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "take garlic",
+    "context": "Kitchen (after opening sack)",
+    "outcome": "Acquired anti-undead item",
+    "score_gain": 0,
+    "category": "item_collection",
+    "location": null,
+    "prerequisites": [
+      "Sack must be opened"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "take lunch",
+    "context": "Kitchen (after opening sack)",
+    "outcome": "Acquired edible item (potential energy source)",
+    "score_gain": 0,
+    "category": "item_collection",
+    "location": null,
+    "prerequisites": [
+      "Sack must be opened"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "take lantern",
+    "context": "Living Room",
+    "outcome": "Acquired light source for dark areas",
+    "score_gain": 0,
+    "category": "item_collection",
+    "location": null,
+    "prerequisites": [
+      "None (trophy case implied source)"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "take sword",
+    "context": "Living Room",
+    "outcome": "Acquired weapon for combat or prying",
+    "score_gain": 0,
+    "category": "item_collection",
+    "location": null,
+    "prerequisites": [
+      "None (trophy case implied source)"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "north from Gallery",
+    "context": "After taking painting",
+    "outcome": "Entered Studio and gained +4 score (likely for art discovery/context)",
+    "score_gain": 4,
+    "category": "area_unlock",
+    "location": null,
+    "prerequisites": [
+      "Painting must be taken; lantern on for visibility",
+      "Painting in inventory (possible trigger for artist's studio connection)"
+    ],
+    "times_confirmed": 2
+  },
+  {
+    "action_pattern": "read leaflet (as paper)",
+    "context": "In Studio with inventory items",
+    "outcome": "Revealed game promo text with no immediate score but potential meta-clues",
+    "score_gain": 0,
+    "category": "item_reveal",
+    "location": null,
+    "prerequisites": [
+      "Leaflet in inventory; no prerequisites beyond collection"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "take painting after drop sack",
+    "context": "In Gallery to manage encumbrance",
+    "outcome": "Acquired treasure without score but enabled further movement",
+    "score_gain": 0,
+    "category": "treasure_collection",
+    "location": null,
+    "prerequisites": [
+      "Sack dropped as prerequisite; follows +25 Chasm unlock"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "drop sack then take painting",
+    "context": "Gallery (inventory full)",
+    "outcome": "Managed inventory to collect treasure without loss",
+    "score_gain": 0,
+    "category": "item_management",
+    "location": null,
+    "prerequisites": [
+      "Sack previously opened (from global) to avoid re-acquisition"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "drop [item] to manage weight",
+    "context": "Various (e.g., Studio, earlier locations)",
+    "outcome": "Allows taking new items or accessing restricted paths (e.g., up) blocked by encumbrance",
+    "score_gain": 0,
+    "category": "inventory_management",
+    "location": "Various (e.g.",
+    "prerequisites": [
+      "Applies when \"holding too many things\" or \"can't get up with what you're carrying\"; chain drops for heavy inventories like sword/lantern/bottle."
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "read leaflet",
+    "context": "Carried (from earlier mailbox?)",
+    "outcome": "Reveals introductory Zork lore text, no direct gameplay effect but confirms item utility",
+    "score_gain": 0,
+    "category": "item_reveal",
+    "location": null,
+    "prerequisites": [
+      "Leaflet must be taken; potentially combinable with other clues later."
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "take rope from attic",
+    "context": "Attic",
+    "outcome": "Acquired utility item for potential climbing/tying",
+    "score_gain": 0,
+    "category": "item_collection",
+    "location": null,
+    "prerequisites": [
+      "Must enter attic via kitchen staircase (empty-handed due to weight limit)",
+      "Player in Attic"
+    ],
+    "times_confirmed": 2
+  },
+  {
+    "action_pattern": "take knife from table in attic",
+    "context": "Attic",
+    "outcome": "Acquired tool for cutting/opening",
+    "score_gain": 0,
+    "category": "item_collection",
+    "location": null,
+    "prerequisites": [
+      "Must enter attic via kitchen staircase (empty-handed due to weight limit)"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "drop multiple items to access staircase",
+    "context": "Kitchen",
+    "outcome": "Overcame weight restriction for upward movement",
+    "score_gain": 0,
+    "category": "access_unlock",
+    "location": null,
+    "prerequisites": [
+      "Items like sword/garlic/bottle must be dropped; enables attic exploration but risks losing items if not retrieved"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "up from Kitchen",
+    "context": "Dark staircase present but traversable without light",
+    "outcome": "Accessed Attic for item collection",
+    "score_gain": 0,
+    "category": "access_unlock",
+    "location": null,
+    "prerequisites": [
+      "None (lantern in inventory but not required here)"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "take knife from Attic",
+    "context": "Knife on table",
+    "outcome": "Gained cutting/prying tool",
+    "score_gain": 0,
+    "category": "item_collection",
+    "location": null,
+    "prerequisites": [
+      "Player in Attic"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "read wooden door in Living Room",
+    "context": "Gothic lettering on nailed door",
+    "outcome": "Revealed clue/engraving (\"This space intentionally left blank\")",
+    "score_gain": 0,
+    "category": "environmental_reveal",
+    "location": null,
+    "prerequisites": [
+      "Door must be targeted specifically"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "enter chimney from Kitchen/Living Room",
+    "context": "Chimney visible but inaccessible",
+    "outcome": "Failed with injury message; requires tool like rope",
+    "score_gain": 0,
+    "category": "access_block",
+    "location": null,
+    "prerequisites": [
+      "None (prevents direct entry)"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "south from cellar then east",
+    "context": "Cellar to East of Chasm",
+    "outcome": "Reveals chasm edge and path east, but creates loop risk without further exploration",
+    "score_gain": 25,
+    "category": "area_unlock",
+    "location": null,
+    "prerequisites": [
+      "Trap door must be opened from Living Room first"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "open trap door then down",
+    "context": "Living Room to Cellar",
+    "outcome": "Accesses cellar but door bars shut immediately, trapping player",
+    "score_gain": 0,
+    "category": "access_block",
+    "location": null,
+    "prerequisites": [
+      "No prerequisites",
+      "but requires escape method (e.g.",
+      "alternate path) to avoid dead-end"
+    ],
+    "times_confirmed": 1
+  }
+]

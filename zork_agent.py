@@ -178,7 +178,7 @@ The following strategic guide has been compiled from analyzing previous episodes
     def get_action(
         self,
         game_state_text: str,
-        previous_actions_and_responses: list[tuple[str, str]] | None = None,
+        previous_actions_and_responses: list[tuple[str, str, int]] | None = None,
         action_counts: Counter | None = None,
         relevant_memories: str | None = None,
     ) -> str:
@@ -187,7 +187,7 @@ The following strategic guide has been compiled from analyzing previous episodes
 
         Args:
             game_state_text: Current game state text
-            previous_actions_and_responses: List of (action, response) tuples for history
+            previous_actions_and_responses: List of (action, response, score) tuples for history
             action_counts: Counter of how many times each action has been tried
             relevant_memories: Formatted string of relevant memories
 
@@ -205,8 +205,12 @@ The following strategic guide has been compiled from analyzing previous episodes
             memory_context = "Here's what you've done so far:\n"
 
             # Add the most recent actions and responses (last 5-8 is usually sufficient)
-            for i, (action, response) in enumerate(previous_actions_and_responses[-8:]):
-                memory_context += f"Command: {action}\nResult: {response.strip()}\n\n"
+            prev_score = previous_actions_and_responses[-9][2] if len(previous_actions_and_responses) >= 9 else 0
+            for i, (action, response, score) in enumerate(previous_actions_and_responses[-8:]):
+                score_change = score - prev_score
+                score_info = f" (Score: {score}" + (f", +{score_change})" if score_change > 0 else ")")
+                memory_context += f"Command: {action}{score_info}\nResult: {response.strip()}\n\n"
+                prev_score = score
 
             # Include information about repetitive actions
             # if action_counts:
@@ -293,7 +297,7 @@ The following strategic guide has been compiled from analyzing previous episodes
     def get_action_with_reasoning(
         self,
         game_state_text: str,
-        previous_actions_and_responses: list[tuple[str, str]] | None = None,
+        previous_actions_and_responses: list[tuple[str, str, int]] | None = None,
         action_counts: Counter | None = None,
         relevant_memories: str | None = None,
         user_input: str | None = None,
@@ -303,7 +307,7 @@ The following strategic guide has been compiled from analyzing previous episodes
 
         Args:
             game_state_text: Current game state text
-            previous_actions_and_responses: List of (action, response) tuples for history
+            previous_actions_and_responses: List of (action, response, score) tuples for history
             action_counts: Counter of how many times each action has been tried
             relevant_memories: Formatted string of relevant memories
 
@@ -320,19 +324,23 @@ The following strategic guide has been compiled from analyzing previous episodes
         if previous_actions_and_responses:
             memory_context = "Here's what you've done so far:\n"
 
-            # Add the most recent actions and responses (last 5-8 is usually sufficient)
-            for i, (action, response) in enumerate(previous_actions_and_responses):
-                memory_context += f"Command: {action}\nResult: {response.strip()}\n\n"
+            # Add the most recent actions and responses with score tracking
+            prev_score = 0
+            for i, (action, response, score) in enumerate(previous_actions_and_responses):
+                score_change = score - prev_score if i > 0 else 0
+                score_info = f" (Score: {score}" + (f", +{score_change})" if score_change > 0 else ")")
+                memory_context += f"Command: {action}{score_info}\nResult: {response.strip()}\n\n"
+                prev_score = score
 
             # Include information about repetitive actions
-            if action_counts:
-                repeated_actions = [
-                    act for act, count in action_counts.items() if count > 2
-                ]
-                if repeated_actions:
-                    memory_context += "\n**CRITICAL WARNING**: You've tried these actions multiple times with limited success: "
-                    memory_context += ", ".join(repeated_actions)
-                    memory_context += ". According to your instructions, you must AVOID repeating failed actions and try completely different approaches.\n"
+            # if action_counts:
+            #     repeated_actions = [
+            #         act for act, count in action_counts.items() if count > 2
+            #     ]
+            #     if repeated_actions:
+            #         memory_context += "\n**CRITICAL WARNING**: You've tried these actions multiple times with limited success: "
+            #         memory_context += ", ".join(repeated_actions)
+            #         memory_context += ". According to your instructions, you must AVOID repeating failed actions and try completely different approaches.\n"
 
             if "o1" in self.model:
                 # o1 models use user role for all messages
