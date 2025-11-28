@@ -92,8 +92,29 @@ Your reasoning here - what you observe, what you're planning to do, and why
 <expected_outcome>
 What you expect to happen when the command is executed. Be concrete and testable.
 </expected_outcome>
+<memory>  <!-- OPTIONAL: Use sparingly to record important discoveries -->
+subject_type: room|object|character
+subject_id: Kitchen|brass lamp|troll
+content: Your concise observation (max 400 chars)
+tags: hazard,clue,puzzle,key,lock,direction  <!-- max 5 tags -->
+confidence: 0.7  <!-- 0.0-1.0, how certain you are -->
+</memory>
 your_single_command_here
 ```
+
+**MEMORY NOTES (OPTIONAL):**
+- You can create memories to record important discoveries, hazards, puzzles, or insights
+- Use SPARINGLY (max 3 per turn) - only for genuinely important information
+- Use to record only facts confirmed by game reaction, do not record expectations based purely on your reasoning
+- Good examples:
+  - `subject_type: room, subject_id: Kitchen, content: Floor is slippery - watch your step, tags: hazard, confidence: 0.8`
+  - `subject_type: object, subject_id: brass lamp, content: Provides light in dark areas, tags: tool,light, confidence: 0.9`
+  - `subject_type: character, subject_id: troll, content: Guards bridge, can be distracted with food, tags: npc,clue, confidence: 0.7`
+- Bad examples (don't waste memory on these):
+  - Obvious facts already in descriptions
+  - Temporary states that will change
+  - Commands or instructions to yourself
+- Your memories will be shown to you when you encounter that room/object/character again
 
 **IMPORTANT**: After the tags, provide ONLY ONE COMMAND. Do NOT include:
 - Multiple commands separated by periods, semicolons, or "and"

@@ -52,7 +52,7 @@ class AnalysisReport:
     
     turn: int
     strategic_goals: list[str]
-    unutilized_objects: list[dict[str, str]]  # {object, location, reason}
+    unsolved_puzzles: list[dict[str, str]]  # {puzzle, location, description}
     progress_hypotheses: list[str]
     key_observations: list[str]
     recommended_actions: list[str]
@@ -118,7 +118,7 @@ class GameAnalyst:
     def analyze_gameplay(
         self,
         current_turn: int,
-        action_history: list[tuple[str, str, int]],
+        action_history: list[dict],
         current_location: str,
         current_inventory: list[str],
         current_score: int,
@@ -128,7 +128,7 @@ class GameAnalyst:
         
         Args:
             current_turn: Current turn number
-            action_history: List of (action, response, score) tuples
+            action_history: List of history dicts with action, response, score, reasoning, expected_outcome
             current_location: Current room
             current_inventory: Current inventory items
             current_score: Current game score
@@ -169,12 +169,12 @@ class GameAnalyst:
         
         self.logger.info(
             f"✅ Analysis complete: {len(analysis_report.strategic_goals)} goals, "
-            f"{len(analysis_report.unutilized_objects)} unutilized objects, "
+            f"{len(analysis_report.unsolved_puzzles)} unsolved puzzles, "
             f"knowledge base: {len(self.knowledge_base)} entries",
             extra={
                 "turn": current_turn,
                 "goals_count": len(analysis_report.strategic_goals),
-                "unutilized_count": len(analysis_report.unutilized_objects),
+                "unsolved_puzzles_count": len(analysis_report.unsolved_puzzles),
                 "knowledge_base_size": len(self.knowledge_base),
             }
         )
@@ -194,19 +194,19 @@ class GameAnalyst:
         lines.append("")
         
         # Include relevant knowledge from global knowledge base
-        if self.knowledge_base:
-            lines.append("📚 GAME KNOWLEDGE (from all episodes):")
-            # Show most relevant knowledge (by times confirmed)
-            sorted_knowledge = sorted(self.knowledge_base, key=lambda k: k.times_confirmed, reverse=True)
-            for entry in sorted_knowledge[:10]:  # Top 10 most confirmed
-                lines.append(f"  • {entry.action_pattern}")
-                lines.append(f"    Context: {entry.context}")
-                if entry.score_gain > 0:
-                    lines.append(f"    Score: +{entry.score_gain} points")
-                if entry.prerequisites:
-                    lines.append(f"    Prerequisites: {', '.join(entry.prerequisites)}")
-                lines.append(f"    Confirmed: {entry.times_confirmed}x")
-            lines.append("")
+        # if self.knowledge_base:
+        #     lines.append("📚 GAME KNOWLEDGE (from all episodes):")
+        #     # Show most relevant knowledge (by times confirmed)
+        #     sorted_knowledge = sorted(self.knowledge_base, key=lambda k: k.times_confirmed, reverse=True)
+        #     for entry in sorted_knowledge[:10]:  # Top 10 most confirmed
+        #         lines.append(f"  • {entry.action_pattern}")
+        #         lines.append(f"    Context: {entry.context}")
+        #         if entry.score_gain > 0:
+        #             lines.append(f"    Score: +{entry.score_gain} points")
+        #         if entry.prerequisites:
+        #             lines.append(f"    Prerequisites: {', '.join(entry.prerequisites)}")
+        #         lines.append(f"    Confirmed: {entry.times_confirmed}x")
+        #     lines.append("")
         
         # Strategic goals
         if self.current_analysis.strategic_goals:
@@ -215,30 +215,25 @@ class GameAnalyst:
                 lines.append(f"  {i}. {goal}")
             lines.append("")
         
-        # Unutilized objects
-        if self.current_analysis.unutilized_objects:
-            lines.append("🔍 UNUTILIZED OBJECTS (Need Investigation):")
-            for obj_info in self.current_analysis.unutilized_objects[:10]:  # Top 10
-                obj_name = obj_info.get('object', 'Unknown')
-                location = obj_info.get('location', 'Unknown')
-                reason = obj_info.get('reason', 'Not explored')
-                lines.append(f"  • {obj_name} (at {location})")
-                lines.append(f"    → {reason}")
+        # Unsolved puzzles
+        if self.current_analysis.unsolved_puzzles:
+            lines.append("🔍 UNSOLVED PUZZLES:")
+            for puzzle_info in self.current_analysis.unsolved_puzzles[:10]:  # Top 10
+                puzzle_name = puzzle_info.get('puzzle', 'Unknown')
+                location = puzzle_info.get('location', 'Unknown')
+                description = puzzle_info.get('description', 'Not analyzed')
+                lines.append(f"  • {puzzle_name} (at {location})")
+                lines.append(f"    → {description}")
             lines.append("")
         
         # Progress hypotheses
-        if self.current_analysis.progress_hypotheses:
-            lines.append("💡 HYPOTHESES FOR PROGRESS:")
-            for i, hypothesis in enumerate(self.current_analysis.progress_hypotheses, 1):
+        if self.current_analysis.key_observations:
+            lines.append("💡 KEY OBSERVATIONS:")
+            for i, hypothesis in enumerate(self.current_analysis.key_observations, 1):
                 lines.append(f"  {i}. {hypothesis}")
             lines.append("")
         
-        # Recommended actions
-        if self.current_analysis.recommended_actions:
-            lines.append("⚡ RECOMMENDED NEXT ACTIONS:")
-            for i, action in enumerate(self.current_analysis.recommended_actions[:5], 1):
-                lines.append(f"  {i}. {action}")
-            lines.append("")
+ 
         
         lines.append("=" * 70)
         
@@ -247,7 +242,7 @@ class GameAnalyst:
     def _prepare_analysis_context(
         self,
         current_turn: int,
-        action_history: list[tuple[str, str, int]],
+        action_history: list[dict],
         current_location: str,
         current_inventory: list[str],
         current_score: int,
@@ -262,13 +257,26 @@ class GameAnalyst:
         lines.append(f"- Inventory: {', '.join(current_inventory) if current_inventory else 'Empty'}")
         lines.append("")
         
-        # Recent action history with scores
+        # Recent action history with scores and reasoning
         lines.append("RECENT ACTION HISTORY (Last 15 actions):")
-        prev_score = action_history[-16][2] if len(action_history) >= 16 else 0
-        for action, response, score in action_history[-15:]:
+        prev_score = action_history[-16]["score"] if len(action_history) >= 16 else 0
+        for entry in action_history[-15:]:
+            action = entry["action"]
+            response = entry["response"]
+            score = entry["score"]
+            reasoning = entry.get("reasoning", "")
+            expected_outcome = entry.get("expected_outcome", "")
+            
             score_change = score - prev_score
             score_indicator = f" [Score: {score}" + (f", +{score_change}]" if score_change > 0 else "]")
             lines.append(f"  Action: {action}{score_indicator}")
+            
+            # Include agent's reasoning if available
+            if reasoning:
+                lines.append(f"  Agent's thinking: {reasoning[:150]}...")
+            if expected_outcome:
+                lines.append(f"  Expected: {expected_outcome[:100]}...")
+            
             # Truncate long responses
             response_preview = response[:200] + "..." if len(response) > 200 else response
             lines.append(f"  Result: {response_preview}")
@@ -299,19 +307,13 @@ Based on this gameplay history, provide a comprehensive strategic analysis:
 
 1. **STRATEGIC GOALS**: What are the top 3-5 goals the player should focus on? Consider score potential, progress opportunities, and current capabilities.
 
-2. **UNUTILIZED OBJECTS**: List objects that have been encountered but not meaningfully used. For each, explain why it might be important and what hasn't been tried yet.
+2. **UNSOLVED PUZZLES**: What puzzles have been encountered recently but not solved? Provide a list of puzzles with their locations and descriptions. 
+Based on current knowledge of the problem, puzzle, develop hypotheses for how to solve it. Consider objects in nearby loocations, also consider all objects that player was able to add to the inventory.
 
-3. **PROGRESS HYPOTHESES**: What are your best hypotheses for how to make progress? Consider:
-   - Unexplored object combinations
-   - Locations that might have hidden features
-   - Items that might unlock new areas
-   - Characters that might provide help or items
 
-4. **KEY OBSERVATIONS**: What patterns or clues stand out from the gameplay?
+3. **KEY OBSERVATIONS**: What patterns or clues stand out from the gameplay?
 
-5. **RECOMMENDED ACTIONS**: What specific actions should be prioritized in the next few turns?
-
-6. **NEW KNOWLEDGE**: If you identify successful action patterns that advanced the game (especially those that gained points or opened new areas), describe them for the global knowledge base.
+4. **NEW KNOWLEDGE**: If you identify successful action patterns that advanced the game (especially those that gained points or opened new areas), describe them for the global knowledge base.
 
 Format your response as:
 
@@ -320,23 +322,13 @@ STRATEGIC GOALS:
 - [goal 2]
 ...
 
-UNUTILIZED OBJECTS:
-- Object: [name], Location: [where seen], Reason: [why it matters and what hasn't been tried]
-...
-
-PROGRESS HYPOTHESES:
-- [hypothesis 1]
-- [hypothesis 2]
+UNSOLVED PUZZLES:
+- Potential Puzzle: [name], Location: [where seen], Reason: [why it matters and what can be done to solve it]
 ...
 
 KEY OBSERVATIONS:
 - [observation 1]
 - [observation 2]
-...
-
-RECOMMENDED ACTIONS:
-- [action 1]
-- [action 2]
 ...
 
 NEW_KNOWLEDGE:
@@ -366,7 +358,7 @@ Be specific, actionable, and focus on moves that could unlock progress or increa
             return AnalysisReport(
                 turn=current_turn,
                 strategic_goals=[],
-                unutilized_objects=[],
+                unsolved_puzzles=[],
                 progress_hypotheses=[],
                 key_observations=[],
                 recommended_actions=[],
@@ -378,7 +370,7 @@ Be specific, actionable, and focus on moves that could unlock progress or increa
         lines = response.strip().split('\n')
         
         strategic_goals = []
-        unutilized_objects = []
+        unsolved_puzzles = []
         progress_hypotheses = []
         key_observations = []
         recommended_actions = []
@@ -393,8 +385,8 @@ Be specific, actionable, and focus on moves that could unlock progress or increa
             if line.upper().startswith('STRATEGIC GOALS:'):
                 current_section = 'goals'
                 continue
-            elif line.upper().startswith('UNUTILIZED OBJECTS:'):
-                current_section = 'objects'
+            elif line.upper().startswith('UNSOLVED PUZZLES:'):
+                current_section = 'puzzles'
                 continue
             elif line.upper().startswith('PROGRESS HYPOTHESES:'):
                 current_section = 'hypotheses'
@@ -415,11 +407,11 @@ Be specific, actionable, and focus on moves that could unlock progress or increa
                 
                 if current_section == 'goals' and content:
                     strategic_goals.append(content)
-                elif current_section == 'objects' and content:
-                    # Try to parse object entry
-                    obj_dict = self._parse_object_line(content)
-                    if obj_dict:
-                        unutilized_objects.append(obj_dict)
+                elif current_section == 'puzzles' and content:
+                    # Try to parse puzzle entry
+                    puzzle_dict = self._parse_puzzle_line(content)
+                    if puzzle_dict:
+                        unsolved_puzzles.append(puzzle_dict)
                 elif current_section == 'hypotheses' and content:
                     progress_hypotheses.append(content)
                 elif current_section == 'observations' and content:
@@ -435,7 +427,7 @@ Be specific, actionable, and focus on moves that could unlock progress or increa
         return AnalysisReport(
             turn=turn,
             strategic_goals=strategic_goals,
-            unutilized_objects=unutilized_objects,
+            unsolved_puzzles=unsolved_puzzles,
             progress_hypotheses=progress_hypotheses,
             key_observations=key_observations,
             recommended_actions=recommended_actions,
@@ -443,40 +435,40 @@ Be specific, actionable, and focus on moves that could unlock progress or increa
             new_knowledge=new_knowledge
         )
     
-    def _parse_object_line(self, line: str) -> dict[str, str] | None:
-        """Parse a line describing an unutilized object."""
+    def _parse_puzzle_line(self, line: str) -> dict[str, str] | None:
+        """Parse a line describing an unsolved puzzle."""
         try:
-            # Expected format: "Object: [name], Location: [where], Reason: [why]"
+            # Expected format: "Potential Puzzle: [name], Location: [where seen], Reason: [why it matters and what can be done to solve it]"
             parts = {}
-            
+
             # Try to extract components
-            if 'Object:' in line:
-                obj_part = line.split('Object:')[1].split(',')[0].strip()
-                parts['object'] = obj_part
-            
+            if 'Potential Puzzle:' in line:
+                puzzle_part = line.split('Potential Puzzle:')[1].split(',')[0].strip()
+                parts['puzzle'] = puzzle_part
+
             if 'Location:' in line:
                 loc_part = line.split('Location:')[1].split(',')[0].strip()
                 parts['location'] = loc_part
-            
+
             if 'Reason:' in line:
                 reason_part = line.split('Reason:')[1].strip()
-                parts['reason'] = reason_part
-            
-            # If we got at least the object name, return it
-            if 'object' in parts:
+                parts['description'] = reason_part
+
+            # If we got at least the puzzle name, return it
+            if 'puzzle' in parts:
                 return {
-                    'object': parts.get('object', 'Unknown'),
+                    'puzzle': parts.get('puzzle', 'Unknown'),
                     'location': parts.get('location', 'Unknown'),
-                    'reason': parts.get('reason', 'Not explored')
+                    'description': parts.get('description', 'Not analyzed')
                 }
-            
-            # Fallback: treat entire line as object description
+
+            # Fallback: treat entire line as puzzle description
             return {
-                'object': line[:50],  # First 50 chars
+                'puzzle': line[:50],  # First 50 chars
                 'location': 'Unknown',
-                'reason': line
+                'description': line
             }
-            
+
         except Exception:
             # If parsing fails, return None
             return None

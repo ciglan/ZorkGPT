@@ -178,7 +178,7 @@ The following strategic guide has been compiled from analyzing previous episodes
     def get_action(
         self,
         game_state_text: str,
-        previous_actions_and_responses: list[tuple[str, str, int]] | None = None,
+        previous_actions_and_responses: list[dict] | None = None,
         action_counts: Counter | None = None,
         relevant_memories: str | None = None,
     ) -> str:
@@ -187,7 +187,7 @@ The following strategic guide has been compiled from analyzing previous episodes
 
         Args:
             game_state_text: Current game state text
-            previous_actions_and_responses: List of (action, response, score) tuples for history
+            previous_actions_and_responses: List of history dicts with action, response, score, reasoning, expected_outcome
             action_counts: Counter of how many times each action has been tried
             relevant_memories: Formatted string of relevant memories
 
@@ -204,12 +204,26 @@ The following strategic guide has been compiled from analyzing previous episodes
         if previous_actions_and_responses:
             memory_context = "Here's what you've done so far:\n"
 
-            # Add the most recent actions and responses (last 5-8 is usually sufficient)
-            prev_score = previous_actions_and_responses[-9][2] if len(previous_actions_and_responses) >= 9 else 0
-            for i, (action, response, score) in enumerate(previous_actions_and_responses[-8:]):
+            # Add the most recent actions and responses
+            prev_score = previous_actions_and_responses[-9]["score"] if len(previous_actions_and_responses) >= 9 else 0
+            for i, entry in enumerate(previous_actions_and_responses[-8:]):
+                action = entry["action"]
+                response = entry["response"]
+                score = entry["score"]
+                reasoning = entry.get("reasoning", "")
+                expected_outcome = entry.get("expected_outcome", "")
+                
                 score_change = score - prev_score
                 score_info = f" (Score: {score}" + (f", +{score_change})" if score_change > 0 else ")")
-                memory_context += f"Command: {action}{score_info}\nResult: {response.strip()}\n\n"
+                memory_context += f"Command: {action}{score_info}\n"
+                
+                # Include previous reasoning and expected outcome
+                if reasoning:
+                    memory_context += f"Your reasoning: {reasoning}\n"
+                if expected_outcome:
+                    memory_context += f"You expected: {expected_outcome}\n"
+                
+                memory_context += f"Result: {response.strip()}\n\n"
                 prev_score = score
 
             # Include information about repetitive actions
@@ -297,7 +311,7 @@ The following strategic guide has been compiled from analyzing previous episodes
     def get_action_with_reasoning(
         self,
         game_state_text: str,
-        previous_actions_and_responses: list[tuple[str, str, int]] | None = None,
+        previous_actions_and_responses: list[dict] | None = None,
         action_counts: Counter | None = None,
         relevant_memories: str | None = None,
         user_input: str | None = None,
@@ -307,12 +321,12 @@ The following strategic guide has been compiled from analyzing previous episodes
 
         Args:
             game_state_text: Current game state text
-            previous_actions_and_responses: List of (action, response, score) tuples for history
+            previous_actions_and_responses: List of history dicts with action, response, score, reasoning, expected_outcome
             action_counts: Counter of how many times each action has been tried
             relevant_memories: Formatted string of relevant memories
 
         Returns:
-            Dict with 'action' (cleaned) and 'reasoning' (raw thinking/reasoning)
+            Dict with 'action' (cleaned), 'reasoning' (raw thinking/reasoning), and 'expected_outcome'
         """
         if "o1" in self.model:
             # Use user prompt for o1 models
@@ -326,10 +340,24 @@ The following strategic guide has been compiled from analyzing previous episodes
 
             # Add the most recent actions and responses with score tracking
             prev_score = 0
-            for i, (action, response, score) in enumerate(previous_actions_and_responses):
+            for i, entry in enumerate(previous_actions_and_responses):
+                action = entry["action"]
+                response = entry["response"]
+                score = entry["score"]
+                reasoning = entry.get("reasoning", "")
+                expected_outcome = entry.get("expected_outcome", "")
+                
                 score_change = score - prev_score if i > 0 else 0
                 score_info = f" (Score: {score}" + (f", +{score_change})" if score_change > 0 else ")")
-                memory_context += f"Command: {action}{score_info}\nResult: {response.strip()}\n\n"
+                memory_context += f"Command: {action}{score_info}\n"
+                
+                # Include previous reasoning and expected outcome
+                if reasoning:
+                    memory_context += f"Your reasoning: {reasoning}\n"
+                if expected_outcome:
+                    memory_context += f"You expected: {expected_outcome}\n"
+                
+                memory_context += f"Result: {response.strip()}\n\n"
                 prev_score = score
 
             # Include information about repetitive actions
@@ -377,17 +405,17 @@ The following strategic guide has been compiled from analyzing previous episodes
             raw_response = response.content.strip()
 
             # DEBUG: Log the raw response to understand what the model is actually returning
-            if self.logger:
-                self.logger.info(
-                    "[DEBUG] Raw agent response:",
-                    extra={
-                        "event_type": "agent_raw_response_debug",
-                        "episode_id": self.episode_id,
-                        "model": self.model,
-                        "raw_response": raw_response,
-                        "raw_response_length": len(raw_response),
-                    },
-                )
+            # if self.logger:
+            #     self.logger.info(
+            #         "[DEBUG] Raw agent response:",
+            #         extra={
+            #             "event_type": "agent_raw_response_debug",
+            #             "episode_id": self.episode_id,
+            #             "model": self.model,
+            #             "raw_response": raw_response,
+            #             "raw_response_length": len(raw_response),
+            #         },
+            #     )
 
             # Extract reasoning from thinking tags
             reasoning_parts = []
@@ -418,24 +446,35 @@ The following strategic guide has been compiled from analyzing previous episodes
                 match.strip() for match in expected_outcome_matches if match.strip()
             ) if expected_outcome_matches else None
 
+            # Extract <memory> tags for manual memory creation
+            memory_matches = re.findall(
+                r"<memory>(.*?)</memory>", raw_response, flags=re.DOTALL
+            )
+            new_memories = []
+            for mem_text in memory_matches:
+                # Parse the memory text
+                mem_dict = self._parse_memory_block(mem_text)
+                if mem_dict:
+                    new_memories.append(mem_dict)
+
             # DEBUG: Log what reasoning parts were extracted
-            if self.logger:
-                self.logger.info(
-                    "[DEBUG] Reasoning extraction results:",
-                    extra={
-                        "event_type": "reasoning_extraction_debug",
-                        "episode_id": self.episode_id,
-                        "think_matches_count": len(think_matches),
-                        "thinking_matches_count": len(thinking_matches),
-                        "reflection_matches_count": len(reflection_matches),
-                        "expected_outcome_matches_count": len(expected_outcome_matches),
-                        "total_reasoning_parts": len(reasoning_parts),
-                        "think_matches": think_matches,
-                        "thinking_matches": thinking_matches,
-                        "reflection_matches": reflection_matches,
-                        "expected_outcome_matches": expected_outcome_matches,
-                    },
-                )
+            # if self.logger:
+            #     self.logger.info(
+            #         "[DEBUG] Reasoning extraction results:",
+            #         extra={
+            #             "event_type": "reasoning_extraction_debug",
+            #             "episode_id": self.episode_id,
+            #             "think_matches_count": len(think_matches),
+            #             "thinking_matches_count": len(thinking_matches),
+            #             "reflection_matches_count": len(reflection_matches),
+            #             "expected_outcome_matches_count": len(expected_outcome_matches),
+            #             "total_reasoning_parts": len(reasoning_parts),
+            #             "think_matches": think_matches,
+            #             "thinking_matches": thinking_matches,
+            #             "reflection_matches": reflection_matches,
+            #             "expected_outcome_matches": expected_outcome_matches,
+            #         },
+            #     )
 
             # Fallback: if no reasoning found in tags, try to extract reasoning from the response
             if not reasoning_parts:
@@ -512,19 +551,19 @@ The following strategic guide has been compiled from analyzing previous episodes
             )
 
             # DEBUG: Log final reasoning result
-            if self.logger:
-                self.logger.info(
-                    "[DEBUG] Final reasoning result:",
-                    extra={
-                        "event_type": "final_reasoning_debug",
-                        "episode_id": self.episode_id,
-                        "final_reasoning": reasoning,
-                        "final_reasoning_length": len(reasoning),
-                        "reasoning_is_none": reasoning is None or reasoning == "",
-                    },
-                )
+            # if self.logger:
+            #     self.logger.info(
+            #         "[DEBUG] Final reasoning result:",
+            #         extra={
+            #             "event_type": "final_reasoning_debug",
+            #             "episode_id": self.episode_id,
+            #             "final_reasoning": reasoning,
+            #             "final_reasoning_length": len(reasoning),
+            #             "reasoning_is_none": reasoning is None or reasoning == "",
+            #         },
+            #     )
 
-            # Clean up the action: remove any thinking and expected_outcome tags
+            # Clean up the action: remove any thinking, expected_outcome, and memory tags
             action = re.sub(r"<think>.*?</think>\s*", "", raw_response, flags=re.DOTALL)
             action = re.sub(r"<thinking>.*?</thinking>\s*", "", action, flags=re.DOTALL)
             action = re.sub(
@@ -532,6 +571,9 @@ The following strategic guide has been compiled from analyzing previous episodes
             )
             action = re.sub(
                 r"<expected_outcome>.*?</expected_outcome>\s*", "", action, flags=re.DOTALL
+            )
+            action = re.sub(
+                r"<memory>.*?</memory>\s*", "", action, flags=re.DOTALL
             )
 
             # Remove any remaining markup tags (like <s>, </s>, etc.)
@@ -563,6 +605,7 @@ The following strategic guide has been compiled from analyzing previous episodes
                 "action": action,
                 "reasoning": reasoning if reasoning else None,
                 "expected_outcome": expected_outcome,
+                "new_memories": new_memories if new_memories else [],
                 "raw_response": raw_response,
             }
         except Exception as e:
@@ -575,8 +618,73 @@ The following strategic guide has been compiled from analyzing previous episodes
                 "action": "look",
                 "reasoning": None,
                 "expected_outcome": None,
+                "new_memories": [],
                 "raw_response": None,
             }  # Default safe action on error
+
+    def _parse_memory_block(self, memory_text: str) -> dict | None:
+        """
+        Parse a <memory> block from agent response.
+        
+        Expected format:
+            subject_type: room|object|character
+            subject_id: Kitchen
+            content: Description here
+            tags: tag1,tag2
+            confidence: 0.8
+        
+        Returns:
+            Dict with parsed memory or None if invalid
+        """
+        try:
+            lines = [line.strip() for line in memory_text.strip().split('\n') if line.strip()]
+            mem_dict = {}
+            
+            for line in lines:
+                # Skip comment lines
+                if line.startswith('<!--') or line.startswith('#'):
+                    continue
+                
+                # Parse key: value format
+                if ':' in line:
+                    key, value = line.split(':', 1)
+                    key = key.strip().lower()
+                    value = value.strip()
+                    
+                    if key == 'subject_type':
+                        if value in ['room', 'object', 'character']:
+                            mem_dict['subject_type'] = value
+                    elif key == 'subject_id':
+                        mem_dict['subject_id'] = value
+                    elif key == 'content':
+                        mem_dict['content'] = value
+                    elif key == 'tags':
+                        # Split tags by comma
+                        mem_dict['tags'] = [t.strip() for t in value.split(',') if t.strip()]
+                    elif key == 'confidence':
+                        try:
+                            conf = float(value)
+                            if 0.0 <= conf <= 1.0:
+                                mem_dict['confidence'] = conf
+                        except ValueError:
+                            pass
+            
+            # Validate required fields
+            if 'subject_type' in mem_dict and 'subject_id' in mem_dict and 'content' in mem_dict:
+                # Set defaults for optional fields
+                if 'tags' not in mem_dict:
+                    mem_dict['tags'] = []
+                if 'confidence' not in mem_dict:
+                    mem_dict['confidence'] = 0.7
+                
+                return mem_dict
+            
+            return None
+            
+        except Exception as e:
+            if self.logger:
+                self.logger.warning(f"Failed to parse memory block: {e}")
+            return None
 
     def get_relevant_memories_for_prompt(
         self,

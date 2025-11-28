@@ -328,7 +328,7 @@ class ZorkInterface:
             r"Your score is (\d+)\s*\(total of (\d+) points\), in \d+ moves.", score_text
         )
         if match:
-            print(f"INFO match: {match.group(1)=} {match.group(2)=}")
+            #print(f"INFO match: {match.group(1)=} {match.group(2)=}")
             current_score = int(match.group(1))
             max_score = int(match.group(2))
         else:

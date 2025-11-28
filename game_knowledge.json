@@ -48,9 +48,10 @@
     "prerequisites": [
       "None (available on table)",
       "None",
-      "Table in kitchen must be present"
+      "Table in kitchen must be present",
+      "None (sack visible on table)"
     ],
-    "times_confirmed": 4
+    "times_confirmed": 7
   },
   {
     "action_pattern": "take bottle",
@@ -61,9 +62,11 @@
     "location": null,
     "prerequisites": [
       "None (available on table); follow with examine or open for potential utility",
-      "Sack must be opened"
+      "Sack must be opened",
+      "None (bottle respawns or is static; pour water to empty for reuse)",
+      "Bottle must be present in location; demonstrates Zork's item respawn mechanics in puzzle areas"
     ],
-    "times_confirmed": 2
+    "times_confirmed": 4
   },
   {
     "action_pattern": "open window then enter window",
@@ -124,9 +127,12 @@
     "location": null,
     "prerequisites": [
       "Lantern on; sword may glow as warning",
-      "Lantern must be on; trap door accessed via rug in Living Room"
+      "Lantern must be on; trap door accessed via rug in Living Room",
+      "Trap door must be open from Living Room initially",
+      "First-time traversal only for score; repeatable for navigation but no further gain",
+      "Lantern on to avoid darkness penalties"
     ],
-    "times_confirmed": 2
+    "times_confirmed": 5
   },
   {
     "action_pattern": "take painting",
@@ -163,9 +169,10 @@
     "category": "item_reveal",
     "location": null,
     "prerequisites": [
-      "Sack must be taken first"
+      "Sack must be taken first",
+      "Sack must be taken and in inventory"
     ],
-    "times_confirmed": 1
+    "times_confirmed": 4
   },
   {
     "action_pattern": "take garlic",
@@ -199,9 +206,11 @@
     "category": "item_collection",
     "location": null,
     "prerequisites": [
-      "None (trophy case implied source)"
+      "None (trophy case implied source)",
+      "None",
+      "None (lantern visible in room)"
     ],
-    "times_confirmed": 1
+    "times_confirmed": 4
   },
   {
     "action_pattern": "take sword",
@@ -211,9 +220,11 @@
     "category": "item_collection",
     "location": null,
     "prerequisites": [
-      "None (trophy case implied source)"
+      "None (trophy case implied source)",
+      "None",
+      "None (sword visible in room)"
     ],
-    "times_confirmed": 1
+    "times_confirmed": 4
   },
   {
     "action_pattern": "north from Gallery",
@@ -395,7 +406,1098 @@
     "prerequisites": [
       "No prerequisites",
       "but requires escape method (e.g.",
-      "alternate path) to avoid dead-end"
+      "alternate path) to avoid dead-end",
+      "Trap door must be open; leads to inescapable loop without further exploration",
+      "Trap door must be open; results in isolation requiring alternate exit",
+      "Trap door must be open and rug moved; lantern on recommended for darkness"
+    ],
+    "times_confirmed": 4
+  },
+  {
+    "action_pattern": "south from cellar",
+    "context": "Initial access to East of Chasm",
+    "outcome": "Moves to chasm edge but no immediate score or lock; enables further east exploration",
+    "score_gain": 0,
+    "category": "area_access",
+    "location": null,
+    "prerequisites": [
+      "Trap door must be open from above first"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "open trophy case then examine",
+    "context": "Living Room",
+    "outcome": "Reveals empty case, no items",
+    "score_gain": 0,
+    "category": "environmental_reveal",
+    "location": null,
+    "prerequisites": [
+      "Case must be closed initially; potential for later insertion of items"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "east from East of Chasm",
+    "context": "East of Chasm to Gallery",
+    "outcome": "Revealed art gallery with sack and west exit",
+    "score_gain": 0,
+    "category": "environmental_reveal",
+    "location": null,
+    "prerequisites": [
+      "None"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "north from Gallery",
+    "context": "Gallery to Studio",
+    "outcome": "Accessed artist's studio with up ladder to Kitchen",
+    "score_gain": 0,
+    "category": "access_unlock",
+    "location": null,
+    "prerequisites": [
+      "None"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "up from Studio",
+    "context": "Studio to Kitchen",
+    "outcome": "Bypassed barred trap door to reach upper house",
+    "score_gain": 0,
+    "category": "access_unlock",
+    "location": null,
+    "prerequisites": [
+      "None (alternative to trap door path)"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "drop [item] in Studio",
+    "context": "Studio",
+    "outcome": "Safely stored items for later retrieval without inventory overflow",
+    "score_gain": 0,
+    "category": "inventory_management",
+    "location": null,
+    "prerequisites": [
+      "Player must have item in possession"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "drop rope",
+    "context": "East of Chasm",
+    "outcome": "Abandoned tool at key location, potentially for later retrieval",
+    "score_gain": 0,
+    "category": "environmental_setup",
+    "location": null,
+    "prerequisites": [
+      "None (but enables future crossing if picked up)"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "take sack then open sack",
+    "context": "Gallery",
+    "outcome": "Collects container but reveals no immediate contents without further exam",
+    "score_gain": 10,
+    "category": "treasure_collection",
+    "location": null,
+    "prerequisites": [
+      "Sack present in Gallery; open is redundant if already so",
+      "try \"look in\" next for sub-items"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "move rug",
+    "context": "Living Room",
+    "outcome": "Reveals closed trap door under rug",
+    "score_gain": 0,
+    "category": "environmental_reveal",
+    "location": null,
+    "prerequisites": [
+      "None"
+    ],
+    "times_confirmed": 3
+  },
+  {
+    "action_pattern": "take painting then examine painting",
+    "context": "Gallery",
+    "outcome": "Collected treasure and revealed no special features but gained major score",
+    "score_gain": 29,
+    "category": "treasure_examination",
+    "location": null,
+    "prerequisites": [
+      "None (painting must be visible in Gallery)"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "attack troll with sword (multiple times, 4+ hits)",
+    "context": "Troll Room",
+    "outcome": "Knocks out the troll, allowing safe passage/exploration of room",
+    "score_gain": 0,
+    "category": "combat_resolution",
+    "location": null,
+    "prerequisites": [
+      "Sword must be wielded; troll regenerates if not finished permanently"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "take axe",
+    "context": "Troll Room (post-troll defeat)",
+    "outcome": "Fails due to inventory weight limit",
+    "score_gain": 0,
+    "category": "item_collection",
+    "location": null,
+    "prerequisites": [
+      "Requires dropping other heavy items first (e.g.",
+      "sword); axe is heavy weapon/treasure",
+      "Empty or light inventory",
+      "troll carcass present",
+      "Drops items first to bypass weight limit; axe likely troll-specific based on room scratches",
+      "Troll may be present; room has bloodstains suggesting prior violence"
+    ],
+    "times_confirmed": 4
+  },
+  {
+    "action_pattern": "down from Living Room trap door",
+    "context": "Cellar (after opening/moving rug)",
+    "outcome": "Accesses underground but bars door behind, trapping player",
+    "score_gain": 0,
+    "category": "access_block",
+    "location": null,
+    "prerequisites": [
+      "Lantern lit for visibility; leads to troll encounter for score potential"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "attack troll with sword (multiple times)",
+    "context": "Troll Room",
+    "outcome": "Defeated troll, triggered robber appearance and black fog disappearance, enabling safer room access",
+    "score_gain": 0,
+    "category": "combat_resolution",
+    "location": null,
+    "prerequisites": [
+      "Sword in inventory",
+      "troll alive and aggressive"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "drop [heavy item] (e.g., lunch, leaflet, sack)",
+    "context": "Encumbered state in Troll Room",
+    "outcome": "Lightened load unexpectedly (lunch drop +25 score), allowed partial item management but led to inventory loss",
+    "score_gain": 0,
+    "category": "inventory_management",
+    "location": null,
+    "prerequisites": [
+      "Carrying over max load",
+      "especially post-injury or with multiple items"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "north from East-West Passage",
+    "context": "Near Troll Room/Chasm access",
+    "outcome": "Discovered Chasm area with crack",
+    "score_gain": 5,
+    "category": "area_unlock",
+    "location": null,
+    "prerequisites": [
+      "Must have lantern for safe passage; no prerequisites beyond basic exploration"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "drop multiple items (e.g., leaflet, sack, egg) then take axe",
+    "context": "Troll Room (weight management)",
+    "outcome": "Allowed taking heavy axe despite \"load too heavy\" warning",
+    "score_gain": 0,
+    "category": "inventory_management",
+    "location": null,
+    "prerequisites": [
+      "Player must be unencumbered; useful for combat prep in tight inventory scenarios"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "drop axe then take egg",
+    "context": "The Troll Room",
+    "outcome": "Allowed acquisition of jewel-encrusted egg despite weight limit",
+    "score_gain": 0,
+    "category": "inventory_management",
+    "location": null,
+    "prerequisites": [
+      "Load must be heavy; axe is droppable combat item"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "take egg without examine",
+    "context": "The Troll Room to Chasm",
+    "outcome": "Acquired egg but no score gain or reveal; led to dropping at chasm",
+    "score_gain": 0,
+    "category": "treasure_mishandling",
+    "location": null,
+    "prerequisites": [
+      "Egg must be examined post-take for full benefit (per existing pattern)"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "examine egg",
+    "context": "South Side Of Chasm or treasure rooms",
+    "outcome": "Triggers thief NPC appearance, who steals valuables from inventory and room",
+    "score_gain": 0,
+    "category": "negative_event",
+    "location": null,
+    "prerequisites": [
+      "Egg must be in possession; avoid in unsecured areas to prevent theft"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "northeast from North-South Passage",
+    "context": "High north-south passage fork",
+    "outcome": "Entered Deep Canyon, revealing new area with paths (east to Dam, northwest, southwest) and auditory clue (flowing water)",
+    "score_gain": 45,
+    "category": "area_unlock",
+    "location": null,
+    "prerequisites": [
+      "None (standard directional move from fork)",
+      "None (direct movement from passage)",
+      "Access to North-South Passage (via north from earlier passages)"
+    ],
+    "times_confirmed": 3
+  },
+  {
+    "action_pattern": "read guidebook",
+    "context": "Dam Lobby (tourist waiting room)",
+    "outcome": "Acquired guidebook with dam history and Frigid River lore (Taken), providing puzzle hints without immediate score",
+    "score_gain": 0,
+    "category": "item_collection",
+    "location": null,
+    "prerequisites": [
+      "Guidebook present in room (likely static object)"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "east from Deep Canyon",
+    "context": "South edge of deep canyon",
+    "outcome": "Entered Dam, revealing top of Flood Control Dam #3 with paths (north to Lobby, south, west) and features (bolt, bubble, scramble down)",
+    "score_gain": 0,
+    "category": "area_unlock",
+    "location": null,
+    "prerequisites": [
+      "Access via canyon edge (exploration reward)",
+      "Presence in Deep Canyon"
+    ],
+    "times_confirmed": 2
+  },
+  {
+    "action_pattern": "read guidebook",
+    "context": "Dam Lobby",
+    "outcome": "Obtained dam history and clues on Frigid River control, potentially aiding bolt/water puzzles",
+    "score_gain": 0,
+    "category": "item_reveal",
+    "location": null,
+    "prerequisites": [
+      "Guidebook present in room (auto-taken on read)",
+      "Guidebook in inventory; provides lore but no new mechanics\u2014potential prerequisite for dam puzzles",
+      "similar to open sack."
+    ],
+    "times_confirmed": 2
+  },
+  {
+    "action_pattern": "examine bolt",
+    "context": "Dam (top of Flood Control Dam #3)",
+    "outcome": "Confirmed ordinary appearance but interactive (turnable with tool), highlighting puzzle need",
+    "score_gain": 0,
+    "category": "environmental_reveal",
+    "location": null,
+    "prerequisites": [
+      "Access to Dam via east from Deep Canyon"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "north from Dam",
+    "context": "Dam (top of Flood Control Dam #3)",
+    "outcome": "Accessed Dam Lobby waiting room with private doors and south path, expanding dam complex",
+    "score_gain": 0,
+    "category": "area_unlock",
+    "location": null,
+    "prerequisites": [
+      "Prior presence on Dam"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "drop multiple items (leaflet, lunch, guidebook, egg) then take wrench",
+    "context": "Maintenance Room",
+    "outcome": "Acquired essential tool after resolving encumbrance",
+    "score_gain": 0,
+    "category": "item_collection",
+    "location": null,
+    "prerequisites": [
+      "Inventory must be overloaded initially; prerequisites include prior drops or lightening from global patterns like drop sack/food"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "read guidebook",
+    "context": "Dam Lobby",
+    "outcome": "Obtained dam history and lore (e.g., construction details)",
+    "score_gain": 0,
+    "category": "clue_reveal",
+    "location": null,
+    "prerequisites": [
+      "Guidebook must be in inventory; recoverable if dropped",
+      "ties to global \"read\" patterns for environmental context",
+      "Guidebook taken; full read may require lobby location or re-examination"
+    ],
+    "times_confirmed": 2
+  },
+  {
+    "action_pattern": "examine bubble",
+    "context": "Maintenance Room",
+    "outcome": "Revealed no immediate value but may be contextual",
+    "score_gain": 0,
+    "category": "environmental_reveal",
+    "location": null,
+    "prerequisites": [
+      "No prerequisites; follow up with tool interactions post-wrench acquisition",
+      "similar to global \"examine egg\" pattern"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "drop multiple items then take wrench",
+    "context": "Maintenance Room (pre-Dam exploration)",
+    "outcome": "Lightens load to acquire heavy tool for mechanical puzzles",
+    "score_gain": 0,
+    "category": "inventory_management",
+    "location": null,
+    "prerequisites": [
+      "Inventory must exceed capacity threshold; prerequisites include having droppable items like lunch",
+      "guidebook",
+      "egg"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "take tube",
+    "context": "Maintenance Room",
+    "outcome": "Acquires versatile All-Purpose Gunk for potential lubrication or adhesion",
+    "score_gain": 0,
+    "category": "item_collection",
+    "location": null,
+    "prerequisites": [
+      "Tube visible on shelf; \"toothpaste\" invalid vocabulary",
+      "so use exact \"tube\"",
+      "None (but follows failed \"take toothpaste\"",
+      "suggesting object synonyms needed)",
+      "None (object misidentified as \"toothpaste\" initially",
+      "correct via \"tube\")",
+      "None (object visible/accessible)",
+      "Tool chests crumbled on touch",
+      "leaving tube on floor; precise phrasing avoids parser errors",
+      "None (but requires recognizing parser shorthand; follow with pump-related commands at Dam Base)",
+      "None (object wrapped in plastic on floor; avoids \"toothpaste\" misnomer)",
+      "Shorten command to \"take tube\"; prerequisite: enter Private east door from Dam Lobby"
+    ],
+    "times_confirmed": 8
+  },
+  {
+    "action_pattern": "examine tube",
+    "context": "Maintenance Room (with tube in inventory)",
+    "outcome": "Reveals Frobozz Magic Gunk Company label and \"All-Purpose Gunk\" description, hinting at utility for stuck mechanisms",
+    "score_gain": 0,
+    "category": "item_reveal",
+    "location": null,
+    "prerequisites": [
+      "Tube must be taken first; ties to industrial theme for puzzle hypotheses like bolt lubrication",
+      "Tube must be taken first",
+      "Tube must be taken and opened first",
+      "Tube must be in inventory",
+      "Tube in inventory from earlier collection; clarifies misuse in plastic/bolt puzzles",
+      "tube in inventory from Maintenance Room; follows failed \"inflate/pump with tube\" actions",
+      "Tube must be in inventory (from earlier maintenance room acquisition)"
+    ],
+    "times_confirmed": 7
+  },
+  {
+    "action_pattern": "read guidebook",
+    "context": "Maintenance Room (with guidebook in inventory)",
+    "outcome": "Provides lore on Flood Control Dam #3 history, funding, and Frigid River, contextualizing dam puzzles without direct solutions",
+    "score_gain": 0,
+    "category": "lore_acquisition",
+    "location": null,
+    "prerequisites": [
+      "Guidebook must be taken; useful for hypothesizing environmental interactions like water control",
+      "None (guidebook must be present",
+      "auto-taken on read)"
+    ],
+    "times_confirmed": 2
+  },
+  {
+    "action_pattern": "open tube",
+    "context": "Dam Top",
+    "outcome": "Exposed viscous material inside, enabling potential application",
+    "score_gain": 0,
+    "category": "item_reveal",
+    "location": null,
+    "prerequisites": [
+      "Tube in inventory; prerequisite for gunk use",
+      "Tube must be in inventory; prerequisite for lubrication hypotheses",
+      "Tube must be in inventory and not already open",
+      "Tube must be in inventory or accessible; follows failed \"squeeze tube on bolt\" attempts",
+      "suggesting it's now usable for targeted application",
+      "Tube must be in inventory (collected earlier",
+      "e.g.",
+      "from Tool Room patterns); follow with examine for safety.",
+      "Tube must be in possession; warns against unexamined application",
+      "similar to open sack for contents check before use",
+      "Tube must be in inventory (acquired from earlier areas like Reservoir); enables follow-up squeeze/pour actions"
+    ],
+    "times_confirmed": 7
+  },
+  {
+    "action_pattern": "south from Dam Lobby",
+    "context": "Dam Lobby to Dam Top",
+    "outcome": "Accessed dam mechanism area with bolt/wrench, enabling environmental puzzle",
+    "score_gain": 0,
+    "category": "area_unlock",
+    "location": null,
+    "prerequisites": [
+      "None",
+      "but chains to north return for item recovery"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "examine bolt / examine bubble",
+    "context": "Dam (top)",
+    "outcome": "Confirms ordinary appearance, ruling out simple interactions but highlighting need for tools/context",
+    "score_gain": 0,
+    "category": "environmental_reveal",
+    "location": null,
+    "prerequisites": [
+      "Access to Dam area"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "read guidebook",
+    "context": "Top Of Flood Control Dam #3",
+    "outcome": "Provided dam lore (construction, Frigid River, grant) for environmental clues, though text cut off",
+    "score_gain": 0,
+    "category": "environmental_reveal",
+    "location": null,
+    "prerequisites": [
+      "Guidebook must be taken; may require re-reading in context for full info",
+      "Guidebook must be in inventory"
+    ],
+    "times_confirmed": 2
+  },
+  {
+    "action_pattern": "read guidebook",
+    "context": "Dam or Lobby",
+    "outcome": "Revealed dam history and lore (e.g., construction year 783, Frigid River role) without score gain but provides context for engineering puzzles",
+    "score_gain": 0,
+    "category": "lore_reveal",
+    "location": null,
+    "prerequisites": [
+      "Guidebook must be in inventory (player had it recently",
+      "likely dropped\u2014retrieve via backtrack to prior rooms like Cellar).",
+      "None (item already present in room)"
+    ],
+    "times_confirmed": 2
+  },
+  {
+    "action_pattern": "east from Dam Lobby",
+    "context": "Dam Lobby",
+    "outcome": "Accessed Maintenance Room, revealing ransacked space with potential tools (wrench, implied wall fixtures)",
+    "score_gain": 0,
+    "category": "area_unlock",
+    "location": null,
+    "prerequisites": [
+      "None (open doorway marked \"Private\" but accessible).",
+      "None (doorway marked \"Private\" but open)"
+    ],
+    "times_confirmed": 2
+  },
+  {
+    "action_pattern": "north from Dam",
+    "context": "Dam",
+    "outcome": "Returned to Dam Lobby, confirming cyclic navigation and private doorways for further exploration",
+    "score_gain": 0,
+    "category": "navigation_confirm",
+    "location": null,
+    "prerequisites": [
+      "Path south over dam must be traversable."
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "read matchbook",
+    "context": "Dam Lobby",
+    "outcome": "Acquired the matchbook item and uncovered promotional text with potential wordplay clues (e.g., \"paper shuffling,\" locations like Muddle)",
+    "score_gain": 0,
+    "category": "item_collection",
+    "location": null,
+    "prerequisites": [
+      "Inventory space available; examine first to identify it"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "examine tool chests",
+    "context": "Maintenance Room",
+    "outcome": "Confirmed chests are empty but highlighted ransacked state, suggesting deeper search or external tools needed for reveals",
+    "score_gain": 0,
+    "category": "environmental_examine",
+    "location": null,
+    "prerequisites": [
+      "None (chests visible in room)"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "take wrench",
+    "context": "Maintenance Room (east from Dam Lobby)",
+    "outcome": "Obtained adjustable wrench for mechanical puzzles like turning bolts on dam controls",
+    "score_gain": 0,
+    "category": "item_collection",
+    "location": null,
+    "prerequisites": [
+      "None (room accessible via open doorway",
+      "no prerequisites beyond entering)",
+      "None (chests already crumbled",
+      "wrench on floor)",
+      "Room must be accessible via east from Dam Lobby; useful for mechanical turning like bolts"
+    ],
+    "times_confirmed": 3
+  },
+  {
+    "action_pattern": "read guidebooks",
+    "context": "Dam Lobby (north from Top of Dam #3)",
+    "outcome": "Revealed lore on Flood Control Dam #3 history, including Frigid River control and Lord Dimwit Flathead references (potential clues for water puzzles)",
+    "score_gain": 0,
+    "category": "clue_reveal",
+    "location": null,
+    "prerequisites": [
+      "Guidebooks are loose in room; \"Taken.\" implies they can be carried for re-reading",
+      "Guidebooks visible in room"
+    ],
+    "times_confirmed": 2
+  },
+  {
+    "action_pattern": "inflate plastic with lungs",
+    "context": "Dam Base (scramble down from Top of Dam #3)",
+    "outcome": "Failed due to insufficient lung power, confirming need for mechanical aid like pump",
+    "score_gain": 0,
+    "category": "puzzle_block",
+    "location": null,
+    "prerequisites": [
+      "Plastic pile and valve present; sets up tube (pump) as solution",
+      "no other inventory required but highlights physical limits"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "pour water from bottle",
+    "context": "Potential: Reservoir South (hypothesized)",
+    "outcome": "Would empty bottle for oil filling, enabling bolt lubrication",
+    "score_gain": 0,
+    "category": "item_manipulation",
+    "location": null,
+    "prerequisites": [
+      "Must have bottle with water; test at water-adjacent location to avoid waste"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "pump the plastic",
+    "context": "Dam Base",
+    "outcome": "Would inflate deflated plastic into boat using tube (pump), unlocking reservoir crossing",
+    "score_gain": 0,
+    "category": "environmental_reveal",
+    "location": null,
+    "prerequisites": [
+      "Tube in inventory; exact phrasing critical after failed variants"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "take screwdriver",
+    "context": "Maintenance Room (ransacked, post-south loop from Dam Lobby)",
+    "outcome": "Acquired screwdriver tool for potential bolt/panel interactions",
+    "score_gain": 0,
+    "category": "item_collection",
+    "location": "Maintenance Room (ransacked",
+    "prerequisites": [
+      "Room must be entered via east from Dam Lobby; no prerequisites beyond presence",
+      "Room must be accessed via east from Dam Lobby; no prerequisites beyond presence",
+      "None (room already accessible via east from Dam Lobby)",
+      "Room must be accessible via east from Dam Lobby; ransacked state allows direct taking without prerequisites"
+    ],
+    "times_confirmed": 4
+  },
+  {
+    "action_pattern": "south from Maintenance Room",
+    "context": "Maintenance Room (after entering east from Dam Lobby)",
+    "outcome": "Looped back to Dam Lobby without new area or score, confirming circular access",
+    "score_gain": 0,
+    "category": "access_block",
+    "location": null,
+    "prerequisites": [
+      "No prerequisites; highlights need for puzzle solve to break loop"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "examine [color] button (for red, blue, yellow, brown)",
+    "context": "Maintenance Room",
+    "outcome": "Confirmed all buttons as non-functional red herrings with \"nothing special\" response, ruling out button-based solutions",
+    "score_gain": 0,
+    "category": "puzzle_clarification",
+    "location": null,
+    "prerequisites": [
+      "Buttons visible on wall after entering room; part of broader exam sequence post-taking screwdriver"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "push bubble",
+    "context": "Dam Top",
+    "outcome": "Failed to activate or reveal anything under the green plastic bubble, indicating it requires a different interaction (e.g., tool or lubrication)",
+    "score_gain": 0,
+    "category": "access_block",
+    "location": null,
+    "prerequisites": [
+      "Bubble visible near sluice controls; ties into bolt puzzle",
+      "no prerequisites beyond location"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "oil the bolt with tube",
+    "context": "Dam Top",
+    "outcome": "Applies the tube's contents to the bolt, but reveals it as glue instead of lubricant, making the bolt harder to turn and escalating puzzle difficulty",
+    "score_gain": 0,
+    "category": "puzzle_manipulation",
+    "location": null,
+    "prerequisites": [
+      "Tube must be opened first; avoid without confirming contents via examine\u2014leads to setback",
+      "not progress."
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "open bottle",
+    "context": "Dam Top",
+    "outcome": "Successfully opens the bottle, granting access to its contents (likely water, based on global take bottle pattern) for potential use as a solvent",
+    "score_gain": 0,
+    "category": "item_reveal",
+    "location": null,
+    "prerequisites": [
+      "Bottle must be in inventory (from earlier collection",
+      "e.g.",
+      "Cellar or Lobby); enables pouring/wetting actions for cleaning glued objects.",
+      "Bottle must be in inventory or nearby; follows pattern of simple \"open\" verbs for containers like sack or tube",
+      "Bottle must be in inventory and unopened; follows failed \"pour\" attempts indicating closure issue",
+      "Bottle must be in inventory (acquired via \"take bottle\" from earlier areas like Cellar); follows global \"open sack\" pattern for revealing usable contents.",
+      "Bottle must be in inventory; follows pattern of opening containers before use (similar to open sack)"
+    ],
+    "times_confirmed": 5
+  },
+  {
+    "action_pattern": "oil [object] with tube",
+    "context": "Top Of Flood Control Dam #3",
+    "outcome": "Applies tube's contents to object (e.g., bolt), but here revealed glue making it stickier",
+    "score_gain": 0,
+    "category": "puzzle_interaction",
+    "location": null,
+    "prerequisites": [
+      "Requires \"with [item]\" syntax after base \"oil\" prompt; negative outcome highlights examine-first strategy",
+      "no prerequisites beyond open tube"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "inventory",
+    "context": "Dam top / Reservoir South",
+    "outcome": "Lists full inventory details, including tube contents (viscous material confirmed as glue post-use)",
+    "score_gain": 0,
+    "category": "status_check",
+    "location": null,
+    "prerequisites": [
+      "No prerequisites; useful for verifying item states before actions like filling or using tools",
+      "No prerequisites; useful for verifying empty bottle state post-failed fills.",
+      "No prerequisites; essential for tracking toolkit in multi-item puzzles"
+    ],
+    "times_confirmed": 3
+  },
+  {
+    "action_pattern": "west (from Dam top)",
+    "context": "Dam top",
+    "outcome": "Moves to Reservoir South, revealing long room with lake, stream paths east/west, and south pathway; enables water-source exploration",
+    "score_gain": 0,
+    "category": "area_unlock",
+    "location": null,
+    "prerequisites": [
+      "Path must be accessible; bidirectional with east return to dam"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "pour bottle on bolt (post-opening, with water)",
+    "context": "Dam top",
+    "outcome": "Spills water over the glued bolt, but it evaporates without effect, confirming glue persists and water source/timing issue",
+    "score_gain": 0,
+    "category": "puzzle_interaction",
+    "location": null,
+    "prerequisites": [
+      "Bottle open and containing water; highlights environmental failure mode (evaporation) for bolt puzzle"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "pour water on bolt",
+    "context": "Dam (top)",
+    "outcome": "Water spills and evaporates without dissolving glue, leaving bolt stuck",
+    "score_gain": 0,
+    "category": "puzzle_interaction_failure",
+    "location": null,
+    "prerequisites": [
+      "Requires filled bottle; highlights need for non-evaporative water source or pre-treatment with viscous material from tube."
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "move west/east along stream path",
+    "context": "Reservoir South \u2194 Stream View",
+    "outcome": "Accesses narrower stream area from broader lake, enabling targeted interactions like filling",
+    "score_gain": 0,
+    "category": "area_navigation",
+    "location": null,
+    "prerequisites": [
+      "Path along stream must be available; unlocks environmental puzzles without score but sets up item acquisition."
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "down stairway",
+    "context": "Deep Canyon",
+    "outcome": "Descends to Loud Room, revealing noisy cavern with platinum bar but triggering command echoes",
+    "score_gain": 0,
+    "category": "access_unlock",
+    "location": null,
+    "prerequisites": [
+      "Stairway from south edge; exposes noise puzzle but no immediate score\u2014pair with ear protection for treasure."
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "take platinum bar (or take bar)",
+    "context": "Loud Room",
+    "outcome": "Command mangles to echoes (e.g., \">bar bar ...\"), preventing acquisition despite visible treasure",
+    "score_gain": 0,
+    "category": "treasure_collection_failure",
+    "location": null,
+    "prerequisites": [
+      "Noise mitigation required (e.g.",
+      "earplugs from viscous material); potential 5-10 points on success",
+      "similar to sack or painting patterns."
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "west from Loud Room",
+    "context": "Despite echoing noise",
+    "outcome": "Successfully accesses Round Room (circular chamber with blocked passages) as a quiet adjacent area for planning",
+    "score_gain": 0,
+    "category": "area_unlock",
+    "location": null,
+    "prerequisites": [
+      "None (navigation works even with echoes)"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "up from Loud Room",
+    "context": "Escaping echoing noise via stone stairway",
+    "outcome": "Returns to Deep Canyon without inventory loss, allowing clear command execution (e.g., successful inventory check)",
+    "score_gain": 0,
+    "category": "progress_escape",
+    "location": null,
+    "prerequisites": [
+      "Must be in Loud Room; lantern lit for visibility"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "apply viscous material from tube to ears (attempted via squeeze/put commands)",
+    "context": "In Loud Room to counter noise",
+    "outcome": "Fails due to echoing but confirms material's muffling potential (commands echo as \">ears ears ...\")",
+    "score_gain": 0,
+    "category": "puzzle_interaction",
+    "location": null,
+    "prerequisites": [
+      "Tube must contain viscous material; retry in adjacent quiet room like Round Room for full success"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "up from Loud Room",
+    "context": "Loud Room (via Deep Canyon stairway)",
+    "outcome": "Escapes noise echo to Deep Canyon, enabling normal commands and inventory check",
+    "score_gain": 0,
+    "category": "area_unlock",
+    "location": null,
+    "prerequisites": [
+      "Noise must be navigable (stairway present despite din)"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "inventory after escape",
+    "context": "Deep Canyon",
+    "outcome": "Confirms toolkit possession (screwdriver, bottle, tube+viscous, wrench, guidebook, lantern), revealing light source and puzzle tools",
+    "score_gain": 40,
+    "category": "item_reveal",
+    "location": null,
+    "prerequisites": [
+      "Post-escape from noisy area; lantern provides light for dark rooms"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "read guidebook at Dam",
+    "context": "Top of the Flood Control Dam #3",
+    "outcome": "Displays lore on dam construction and hints at control panel/tour path (e.g., \"on your right\"), advancing puzzle knowledge without score",
+    "score_gain": 0,
+    "category": "clue_reveal",
+    "location": null,
+    "prerequisites": [
+      "Guidebook in inventory; useful for mechanical puzzles like glued bolt"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "south from Round Room",
+    "context": "Round Room (circular hub with cave-ins)",
+    "outcome": "Moves to Narrow Passage, triggering exploration gain despite no item take",
+    "score_gain": 40,
+    "category": "area_unlock",
+    "location": null,
+    "prerequisites": [
+      "Access via west from Loud Room; suggests hidden progress in narrow corridor (e.g.",
+      "for sack-like items)",
+      "None (but benefits from lit lantern to avoid drops)"
+    ],
+    "times_confirmed": 2
+  },
+  {
+    "action_pattern": "south from Cellar via crawlway",
+    "context": "Cellar to East of Chasm",
+    "outcome": "Opened chasm-edge area for eastern exploration",
+    "score_gain": 0,
+    "category": "access_block",
+    "location": null,
+    "prerequisites": [
+      "Must navigate past troll without combat to reach Cellar safely"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "examine mirror",
+    "context": "Mirror Room south wall",
+    "outcome": "Revealed humorous self-reflection (\"ugly person\") with parse error on malformed command",
+    "score_gain": 0,
+    "category": "environmental_reveal",
+    "location": null,
+    "prerequisites": [
+      "Requires clear input; test with inventory items like viscous tube for alteration"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "east from East of Chasm",
+    "context": "East of Chasm to Gallery",
+    "outcome": "Entered art gallery with remaining painting and vandal trails",
+    "score_gain": 0,
+    "category": "area_unlock",
+    "location": null,
+    "prerequisites": [
+      "Inventory empty on arrival",
+      "suggesting drop risk in chasm proximity; take painting next for +4 potential"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "pour water on bolt",
+    "context": "Top Of Flood Control Dam #3 with open bottle in inventory",
+    "outcome": "Spills water from bottle onto the glued bolt, but it evaporates without dissolving glue, confirming water's ineffectiveness alone",
+    "score_gain": 0,
+    "category": "environmental_interaction",
+    "location": null,
+    "prerequisites": [
+      "Bottle must be open and in inventory; highlights need for combined actions (e.g.",
+      "with tools) to progress mechanical puzzles"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "south",
+    "context": "Dam (top)",
+    "outcome": "Moves to Deep Canyon (south edge, with passages east/northwest/southwest and down stairway)",
+    "score_gain": 0,
+    "category": "area_unlock",
+    "location": null,
+    "prerequisites": [
+      "At Dam; reveals river canyon access but no immediate items."
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "down",
+    "context": "Deep Canyon",
+    "outcome": "Descends stairway to Loud Room (large room with undetectable ceiling, east-west passage, upward stairway, deafening noise from water)",
+    "score_gain": 0,
+    "category": "area_unlock",
+    "location": null,
+    "prerequisites": [
+      "From Deep Canyon south edge; introduces echo effect that distorts commands (e.g.",
+      "\"take bar\" echoes as \"bar bar ...\")."
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "up",
+    "context": "Loud Room",
+    "outcome": "Ascends stone stairway back to Deep Canyon (south edge)",
+    "score_gain": 0,
+    "category": "area_unlock",
+    "location": null,
+    "prerequisites": [
+      "From Loud Room; confirms bidirectional canyon access but highlights need to solve room puzzle before full exploration."
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "turn bolt with wrench",
+    "context": "Top of Flood Control Dam #3",
+    "outcome": "Failed to open sluice gates (bolt stuck), indicating need for lubrication or sequence",
+    "score_gain": 0,
+    "category": "puzzle_interact",
+    "location": null,
+    "prerequisites": [
+      "Wrench in inventory; bolt on dam panel"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "north from Dam Base",
+    "context": "Dam Base to Dam Top",
+    "outcome": "Accessed upper dam level with control panel for puzzle progress",
+    "score_gain": 0,
+    "category": "area_unlock",
+    "location": null,
+    "prerequisites": [
+      "None (standard path)"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "squeeze tube",
+    "context": "Dam (top of Flood Control Dam #3)",
+    "outcome": "Dispensed viscous gunk onto the player's hand, creating a temporary \"gunk-covered hand\" state for indirect application",
+    "score_gain": 0,
+    "category": "item_interaction",
+    "location": null,
+    "prerequisites": [
+      "Tube must be open in inventory; outcome implies hand as intermediary for lubrication",
+      "prerequisite for wiping/applying to objects like rusty bolt"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "squeeze tube",
+    "context": "Dam Top",
+    "outcome": "Dispensed viscous material (lubricant) into hand/inventory from open tube",
+    "score_gain": 0,
+    "category": "item_reveal",
+    "location": null,
+    "prerequisites": [
+      "Tube must be open (from prior actions); enables lubrication puzzles"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "push red button",
+    "context": "Maintenance Room (lights off)",
+    "outcome": "Activates room lights, updating illumination but no new objects/paths visible on \"look\"",
+    "score_gain": 0,
+    "category": "environmental_toggle",
+    "location": null,
+    "prerequisites": [
+      "None (button always present); follow with \"examine [color] button\" or \"push [other color] button\" for sequence potential"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "examine buttons",
+    "context": "Maintenance Room",
+    "outcome": "Disambiguates to list of blue, red, brown, yellow buttons, enabling targeted interaction",
+    "score_gain": 0,
+    "category": "puzzle_clarification",
+    "location": null,
+    "prerequisites": [
+      "Lights on recommended for better visibility; prerequisite for pushing specific buttons"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "push red button",
+    "context": "Maintenance Room (dark initially)",
+    "outcome": "Turns on room lights, updating description to reveal ransacked details without new objects",
+    "score_gain": 0,
+    "category": "environmental_reveal",
+    "location": null,
+    "prerequisites": [
+      "None (button always accessible)"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "push blue button",
+    "context": "Maintenance Room (lights on)",
+    "outcome": "Causes pipe leak from east wall, flooding room to ankle depth with rumbling sound",
+    "score_gain": 0,
+    "category": "environmental_change",
+    "location": null,
+    "prerequisites": [
+      "Lights must be on (red button pushed first); may enable further puzzles like leak repair"
+    ],
+    "times_confirmed": 1
+  },
+  {
+    "action_pattern": "examine pile of plastic",
+    "context": "Dam Base (near Frigid River)",
+    "outcome": "Confirms it's unremarkable but implies potential use (e.g., deflated item)",
+    "score_gain": 0,
+    "category": "item_examination",
+    "location": null,
+    "prerequisites": [
+      "None; suggests inflation or repair with inventory tools/tube for boat creation"
     ],
     "times_confirmed": 1
   }
